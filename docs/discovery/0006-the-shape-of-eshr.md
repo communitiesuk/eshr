@@ -64,7 +64,7 @@ The core primitive is prepare → call → check (0002 §6). Thinking since then
 **Wiring: declared, with the case for runtime matching heard.**
 
 - **Current view: a chain lists its own links.** In the language spec, chains are like function definitions. A sequential chain is composition, a parallel chain is `map`, and a conditional chain is a `match` on the output's type.
-- **The case for runtime matching** is mainly extension without editing. Adding a handler for a new kind of document should not mean editing every chain that might produce one. That case was found persuasive enough to keep open. Other reasons heard: human resolvers, running work when its inputs are ready, routing requests for more context, and swapping in revised primitives.
+- **The case for runtime matching** is mainly extension without editing. Adding a primitive that accepts a new kind of document should not mean editing every chain that might produce one. That case was found persuasive enough to keep open. Other reasons heard: human resolvers, running work when its inputs are ready, routing requests for more context, and swapping in revised primitives.
 - **Shape alone cannot select a link.** Two primitives can have the same input and output shapes and do different things, and forbidding that would be needlessly constraining. So shape is the compatibility check, not what chooses the link. Selection is by name: a named link in a declared chain, or a named type (a draft and an approved draft are different types even with identical fields). This answers the structural-or-named question in favour of named types, and means conditional chains match on named types, not bare shape.
 - **Middle grounds noted:** a registry that is itself part of the spec, so the checker can still list every match and a new registration shows as a diff; and higher-order chains that take a primitive as a parameter, as `map` takes a function.
 
@@ -83,7 +83,7 @@ The core primitive is prepare → call → check (0002 §6). Thinking since then
 *No link matches, or more than one does: proposed as a compile error.*
 
 - **No match is prevented at run time already**, because a call's output is checked against its declared type before anything uses it. An output that fits no declared type fails the check: it loops back or becomes "not possible".
-- **So every output, including "not possible", must have a handler.** This is like an exhaustive `match`. *Drawback:* writing an escalation path at every link is heavy. *Possible relief:* an unhandled "not possible" passes up to the enclosing chain, like Rust's `?`. A catch-all arm would weaken assurance, but the checker could list catch-all arms.
+- **So every output, including "not possible", must have a next link that accepts it.** This is like an exhaustive `match`. *Drawback:* writing an escalation path at every link is heavy. *Possible relief:* an unhandled "not possible" passes up to the enclosing chain, like Rust's `?`. A catch-all arm would weaken assurance, but the checker could list catch-all arms.
 - **More than one match as an error rules out implicit fan-out**, where one output goes to two consumers (say a reviewer and a logger). Fan-out would need the explicit parallel form. That is probably a good thing.
 - **Drawback: exhaustiveness pulls against extension.** Adding a new output type (the new-document case) breaks every exhaustive match on that output until each is updated. This is the "expression problem", and it bears on question 2.
 
