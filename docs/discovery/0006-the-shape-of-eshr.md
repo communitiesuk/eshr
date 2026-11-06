@@ -83,7 +83,8 @@ The core primitive is prepare → call → check (0002 §6). Thinking since then
 *No link matches, or more than one does: proposed as a compile error.*
 
 - **No match is prevented at run time already**, because a call's output is checked against its declared type before anything uses it. An output that fits no declared type fails the check: it loops back or becomes "not possible".
-- **So every output, including "not possible", must have a next link that accepts it.** This is like an exhaustive `match`. *Drawback:* writing an escalation path at every link is heavy. *Possible relief:* an unhandled "not possible" passes up to the enclosing chain, like Rust's `?`. A catch-all arm would weaken assurance, but the checker could list catch-all arms.
+- **So every output, including "not possible", must have a next link that accepts it.** This is like an exhaustive `match`. Writing an escalation path at every link would be heavy, so:
+- **Decided: "not possible" is passed up to the parent where primitives are nested, and passed on along a chain.** A link that does not accept "not possible" forwards it, much as Rust's `?` does or a result type does in railway-style code. It reaches the end of the chain and then the parent, so only the links that mean to handle it declare it. A catch-all arm would weaken assurance, but the checker could list catch-all arms.
 - **More than one match as an error rules out implicit fan-out**, where one output goes to two consumers (say a reviewer and a logger). Fan-out would need the explicit parallel form. That is probably a good thing.
 - **Drawback: exhaustiveness pulls against extension.** Adding a new output type (the new-document case) breaks every exhaustive match on that output until each is updated. This is the "expression problem", and it bears on question 2.
 
@@ -131,7 +132,7 @@ Consequences noticed so far (not decided):
 
 **Left to later ADRs:** a primitive's slots and the set of built-in calls. Both are expected to change during development.
 
-### The first stage (open question 3, in progress)
+### The first stage (open question 3, settled in outline)
 
 **Goal: define and run a very simple chain, even if all it does is echo its input.**
 
@@ -146,7 +147,8 @@ Current view on what is in:
 - **A spec language with its own syntax**, rather than chains built in the implementation language.
 - **A policy checker.**
 - **Plain synchronous runs.** State and events come later.
-- **Chain kinds:** sequential only would be much quicker. Doing all three would probably give a neater, more consistent runtime. Not yet decided.
+- **Chain kinds: sequential plus conditional.** Parallel is deferred, but the data model is designed with all three in mind.
+- **Spec format: a schema-checked data format first, a proper syntax later** as a front end that produces the same structure.
 
 Points raised (not decided):
 
@@ -171,10 +173,10 @@ To settle in this order:
 
 1. **How do chains and branching relate?** In progress: see "Chains and branching" above. Still open within it:
    - Wiring is declared for now. Is extension without editing met by named-type dispatch over a registry in the spec, by higher-order chains, or by both?
-   - No match or more than one match as a compile error: does an unhandled "not possible" pass up to the enclosing chain, and how does exhaustiveness live with adding new types?
+   - No match or more than one match as a compile error ("not possible" is passed on and up, decided): how does exhaustiveness live with adding new types?
    - Recombining: is a list enough, or is a record-shaped join needed too? When does recombining start, and how are partial failures handled?
 2. **What does "extensible" mean?** Settled in outline: see "Extensibility" above. Named composition in the spec language; computation only in calls, in four tiers from runtime to user-defined calls; types follow the same pattern.
-3. **How far does the first stage go?** In progress: see "The first stage" above. Split into 1a (define, check, run) and 1b (replay and revise). Still open: which chain kinds, and the spec format.
+3. **How far does the first stage go?** In progress: see "The first stage" above. Settled in outline: 1a (define, check, run) and 1b (replay and revise); sequential plus conditional; a data format first.
 
 Also open, not yet ordered:
 
