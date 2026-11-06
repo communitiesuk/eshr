@@ -131,6 +131,25 @@ Consequences noticed so far (not decided):
 
 **Left to later ADRs:** a primitive's slots and the set of built-in calls. Both are expected to change during development.
 
+### The first stage (open question 3, in progress)
+
+**Goal: define and run a very simple chain, even if all it does is echo its input.**
+
+Current view on what is in:
+
+- **Model calls, from the start.** eshr is about building harnesses.
+- **A spec language with its own syntax**, rather than chains built in the implementation language.
+- **A policy checker.**
+- **Plain synchronous runs.** State and events come later.
+- **Chain kinds:** sequential only would be much quicker. Doing all three would probably give a neater, more consistent runtime. Not yet decided.
+
+Points raised (not decided):
+
+- **The spec should not be code in the implementation language.** An internal DSL (chains written in Python, say) would let arbitrary host code into the spec, which breaks "computation only in calls" and makes static checking unreliable. So the spec needs to be its own artefact.
+- **A data format first, syntax later.** One way to get a real spec without designing a syntax while the semantics still move: write specs in a schema-checked data format (YAML, JSON or similar), which is in effect the parsed structure. The checker and runtime work on that structure. A proper syntax later becomes a front end that produces the same structure. *Drawback:* data formats are clumsy for function-like composition (named chains, chains passed into slots).
+- **Conditional matching is needed even for a sequential echo chain.** Every primitive's output is either its result or "not possible", so even one link must branch on the output's type. That suggests sequential plus conditional in the first stage, with parallel (which brings recombining and scheduling, the least settled parts) deferred.
+- **An echo chain is a good first test.** A model call asked to repeat its input, with a deterministic check that the output equals the input, exercises prep, call and check, the retry loop and the "not possible" exit, and gives a check whose result is unambiguous.
+
 ### Sequencing
 
 Working from first principles means starting with very basic primitives. So:
@@ -150,7 +169,7 @@ To settle in this order:
    - No match or more than one match as a compile error: does an unhandled "not possible" pass up to the enclosing chain, and how does exhaustiveness live with adding new types?
    - Recombining: is a list enough, or is a record-shaped join needed too? When does recombining start, and how are partial failures handled?
 2. **What does "extensible" mean?** Settled in outline: see "Extensibility" above. Named composition in the spec language; computation only in calls, in four tiers from runtime to user-defined calls; types follow the same pattern.
-3. **How far does the first stage go?** What exactly sits in step 1 of the sequencing, and what counts as done?
+3. **How far does the first stage go?** In progress: see "The first stage" above. Still open: which chain kinds, the spec format, and whether replay is part of "done".
 
 Also open, not yet ordered:
 
