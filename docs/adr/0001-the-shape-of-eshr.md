@@ -23,11 +23,12 @@ This ADR records, in outline, what eshr is made of and how the parts fit togethe
 
 - **The primitive is prepare → call → check.** The prepare step builds the input, the call does the work, and the check judges the result.
 - **Every primitive is a chain.** A single primitive is a chain with one link.
-- **Prepare and check are slots, filled by chains** built from the same primitive. The nesting stops where a prepare step just passes its input on unchanged.
-- **Context assemblers and check-step chains are built in eshr**, as families of chains. They are not parts of the runtime. A context assembler is one kind of preparer; others assemble parameters for deterministic calls.
-- **The check decides whether to stop or loop.** It either outputs, or goes round again with something that helps the preparer do better.
+- **Prepare and check are slots, filled by chains** built from the same primitive. The nesting ends at the base primitive, whose slots are filled by the base preparer and the base checker: built-in calls the runtime supplies. Nests go as deep as needed but never recurse without end.
+- **The base checker can only be used with the base call.** As an opening position, every other checker is a primitive.
+- **Context assemblers and check-step chains are built in eshr**, as families of chains; only the base preparer and checker come from the runtime. A context assembler is one kind of preparer; others assemble parameters for deterministic calls.
+- **The check decides whether to stop or loop.** It either outputs, or goes round again with something that helps the preparer do better. A retry limit caps the looping; exceeding it means "not possible".
 - **The output is the call's result, or "not possible".**
-- **Each primitive has something like a system prompt** that steers its preparer. This is what makes it possible to bound the recursion in the preparer.
+- **Each primitive has something like a system prompt** that steers its preparer.
 
 ### What eshr is made of
 
@@ -38,17 +39,17 @@ This ADR records, in outline, what eshr is made of and how the parts fit togethe
 
 ### Chains
 
-- **Declared types are the contract between links.** A link's declared output must be compatible with the next link's declared input requirements. Types are named: two primitives may share a shape and do different things, so links connect on named types, not bare shape.
+- **Declared types are the contract between links.** A link's declared output must be compatible with the next link's declared input requirements. Types are named: two primitives may share a shape and do different things, so compatibility between links is judged on named types, not bare shape.
 - **There are three kinds of chain:** sequential (one link at a time, in order), parallel (each element of one link's output goes to a separate primitive) and conditional (the next link is the one whose declared input accepts the output's type). Parallel results can be combined by feeding them to a chain prepared to receive them.
 - **Wiring is declared.** A chain lists its own links, as a function definition does.
-- **An output that no next link's declared input accepts, or that more than one accepts, stops the harness compiling.** This is held provisionally.
 - **"Not possible" is passed on along a chain, or up to the parent** where primitives are nested.
+- **Any other declared output type that no next link's declared input accepts, or that more than one accepts, stops the harness compiling.** This is held provisionally.
 
 ### Scheduling, events and humans
 
 - **Scheduling policy belongs to each harness.** A harness works until no tasks are left, then waits for people to make more work. Those conditions vary by harness, and may simply be part of its definition in the spec, not separate configuration.
-- **Choosing which person to involve is a step in the harness**, so it need not be defined in the runtime and cannot be known at compile time.
-- **Limits and timeouts are events**, to be handled gracefully like any other.
+- **Choosing which person to involve is a step in the harness**, so it need not be defined in the runtime, and who is chosen cannot be known at compile time.
+- **Limits, a primitive's retry limit among them, and timeouts are events**, to be handled gracefully like any other.
 - **Supersession is left to the harness**: the myelin replication.
 
 ### Extensibility and computation
@@ -57,10 +58,10 @@ This ADR records, in outline, what eshr is made of and how the parts fit togethe
 - **Computation happens only in calls.** This is held provisionally.
 - **A complete harness is made of four elements**, each with its source:
   - wiring chains together: the runtime itself;
-  - built-in calls, for common work: eshr's developers;
+  - built-in calls, for common operations: eshr's developers;
   - chains composed from built-in calls, for most extensions: harness developers;
   - user-defined calls, for edge cases: harness developers.
-- **Built-in calls are defined in the runtime.** User-defined calls, a way to run outside code, will be needed.
+- **Built-in calls, the base preparer and checker first among them, are defined in the runtime.** User-defined calls, a way to run outside code, will be needed.
 - **Types follow the same pattern:** built-in, plus user-defined.
 
 ### The harness spec
@@ -84,14 +85,14 @@ This ADR records, in outline, what eshr is made of and how the parts fit togethe
 - One primitive and declared wiring give the policy checker a closed graph to check before anything runs.
 - A second hypothesis, to be tested rather than assumed: small composable computations beat monoliths.
 - Left to later ADRs or still open:
-  - a primitive's slots and the set of built-in calls;
+  - a primitive's slots, and built-in calls beyond the base preparer and checker, including any other base calls or base checkers;
   - the model call layer (Agent SDK or Messages API) and the implementation language;
   - a durable-execution engine, such as Temporal;
   - tools for writing graphs;
   - how existing chains take up a new type without each being edited: a registry in the spec, higher-order chains, or both;
   - whether branching is wholly type-directed, and how exhaustive matching lives with adding new types;
   - how recombining works: gather and join, when it fires, partial failure and replay order;
-  - the form of user-defined calls, and whether the policy checker and the run record handle kinds of call differently: for example, the checker listing every call with effects, or the record keeping only the inputs of a deterministic call without effects, since replay recomputes it;
+  - the form of user-defined calls, and whether the policy checker and the run record handle kinds of call differently: for example, the checker listing every user-defined call, or the record keeping only the inputs of a deterministic call without effects, since replay recomputes it;
   - whether and how the runtime holds state and events, and how limits, timeouts and supersession behave in it;
   - which government assurance guidance to name, deferred to discovery.
 
