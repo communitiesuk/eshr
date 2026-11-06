@@ -28,7 +28,7 @@ The hypothesis is that a scoped harness can be assured *by design*, not only by 
 - **Deployable where agents currently aren't.** Assessors get artefacts they already know how to review: a graph, its rules, and where each rule is enforced.
 - **Defensible accountability.** It is clear which decisions were a person's and which were the AI's, with evidence to back that up for audit and for reporting on AI use.
 - **Quality that doesn't depend on who is driving.** Required steps happen because the code calls them, not because someone remembered to ask.
-- **Less exposure to prompt injection.** Injected text can affect only an output that is then checked. It can't choose actions. (It can still shape the content of permitted actions, so this reduces the risk rather than removing it.)
+- **Less exposure to prompt injection.** Injected text can affect only an output that is then checked. It can't choose actions. (It can still shape the content of permitted actions though, so this reduces the risk rather than removing it.)
 - **Lower cost.** Each step gets only the context it needs, so most steps can run on cheaper models, with frontier models kept for judgement.
 - **Less lock-in.** The model is a part that can be swapped, not the thing in charge.
 
