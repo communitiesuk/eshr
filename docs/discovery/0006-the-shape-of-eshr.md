@@ -97,7 +97,7 @@ The core primitive is prepare → call → check (0002 §6). Thinking since then
 - **Order.** Parallel results arrive in any order. For replay to be reproducible, the list should follow input order, not arrival order.
 - **Size.** A long list going into a model call needs its preparer to select and compress. That is the context assembler again. The output's confidentiality label is the join over every element (0002 §5).
 
-### Extensibility (open question 2, in progress)
+### Extensibility (open question 2, settled in outline)
 
 **What "extensible" means: named composition in the spec language.** A person can:
 
@@ -127,10 +127,9 @@ Consequences noticed so far (not decided):
 - **Every computation is recorded**, however small, because it happens in a call. That makes the record fine-grained, and lets each small piece be replayed and revised on its own. The cost is volume. One option: calls that are deterministic and have no effects need only their inputs recorded, because replay can recompute their outputs.
 - **Calls may fall into kinds** that the checker and the record treat differently: deterministic with no effects, deterministic with effects, and model calls.
 
-**Not yet settled:**
+**Types follow the same pattern:** built-in types, plus named types defined in the spec language.
 
-- Where are named types defined? The same four-tier pattern may apply: built-in types, plus types defined in the spec language.
-- Which slots does a primitive have? So far: prep, call, check, the steering prompt and a budget.
+**Left to later ADRs:** a primitive's slots and the set of built-in calls. Both are expected to change during development.
 
 ### Sequencing
 
@@ -150,7 +149,7 @@ To settle in this order:
    - Wiring is declared for now. Is extension without editing met by named-type dispatch over a registry in the spec, by higher-order chains, or by both?
    - No match or more than one match as a compile error: does an unhandled "not possible" pass up to the enclosing chain, and how does exhaustiveness live with adding new types?
    - Recombining: is a list enough, or is a record-shaped join needed too? When does recombining start, and how are partial failures handled?
-2. **What does "extensible" mean?** In progress: see "Extensibility" above. Named composition in the spec language; computation only in calls, in four tiers from runtime to user-defined calls. Still open: where types are defined, and which slots a primitive has.
+2. **What does "extensible" mean?** Settled in outline: see "Extensibility" above. Named composition in the spec language; computation only in calls, in four tiers from runtime to user-defined calls; types follow the same pattern.
 3. **How far does the first stage go?** What exactly sits in step 1 of the sequencing, and what counts as done?
 
 Also open, not yet ordered:
