@@ -13,7 +13,9 @@ Today's AI agents run in an **open loop**: the model decides what to do, in what
 
 ### The hypothesis
 
-A runtime that **holds the control flow itself** can be assured *by design*, not only by containment, and will do the work at least as well.
+eshr is a runtime for building harnesses. It can build an open loop as easily as anything else. What it adds is the ability to build **constrained (scoped) harnesses**, where the harness, not the model, holds the control flow.
+
+The hypothesis is that a scoped harness can be assured *by design*, not only by containment, and will do the work at least as well:
 
 - A declared graph sets out everything a run can do. Steps it does not declare are refused.
 - The model only fills in content at a step. It has no tools, and its output is checked before anything uses it.
@@ -32,4 +34,4 @@ A runtime that **holds the control flow itself** can be assured *by design*, not
 
 ### What would prove it wrong
 
-Open loops are still better for exploratory, supervised work, and eshr doesn't try to replace them there. The bet fails if assembling the right context for each step proves unreliable, if writing the graphs costs more than teams will pay, or if the checks become approvals that people wave through. We will measure those, not assume them. The reasoning is in [`docs/discovery/`](docs/discovery/).
+The hypothesis fails if assembling the right context for each step proves unreliable, if writing the graphs costs more than teams will pay, or if the checks become approvals that people wave through. These are to be measured, not assumed. The reasoning is in [`docs/discovery/`](docs/discovery/).
