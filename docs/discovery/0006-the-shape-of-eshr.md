@@ -135,6 +135,11 @@ Consequences noticed so far (not decided):
 
 **Goal: define and run a very simple chain, even if all it does is echo its input.**
 
+**Split into two stages, as separate concerns:**
+
+- **Stage 1a: define, check and run.** Define the echo chain in the spec, have the policy checker pass it, run it, and write the record.
+- **Stage 1b: revise systematically.** Replay a recorded run against a revised primitive and compare the results. This depends on 1a, but once 1a exists there must be a systematic way to revise, so it follows straight on.
+
 Current view on what is in:
 
 - **Model calls, from the start.** eshr is about building harnesses.
@@ -154,7 +159,7 @@ Points raised (not decided):
 
 Working from first principles means starting with very basic primitives. So:
 
-1. The primitive, a minimal runtime and the record.
+1. The primitive, a minimal runtime and the record: (1a) define, check and run a simple chain; (1b) replay its record against a revised primitive.
 2. Simple chains, evaluated on their own merits by replaying their records.
 3. A growing library of chains, each designed, implemented, tested and revised.
 4. The first full, real-world harness: a replication of myelin. Smaller pieces of it, such as myelin's drafter → reviewer → reviser chain (0003, 0004), may come earlier, but the whole is a long way off.
@@ -169,7 +174,7 @@ To settle in this order:
    - No match or more than one match as a compile error: does an unhandled "not possible" pass up to the enclosing chain, and how does exhaustiveness live with adding new types?
    - Recombining: is a list enough, or is a record-shaped join needed too? When does recombining start, and how are partial failures handled?
 2. **What does "extensible" mean?** Settled in outline: see "Extensibility" above. Named composition in the spec language; computation only in calls, in four tiers from runtime to user-defined calls; types follow the same pattern.
-3. **How far does the first stage go?** In progress: see "The first stage" above. Still open: which chain kinds, the spec format, and whether replay is part of "done".
+3. **How far does the first stage go?** In progress: see "The first stage" above. Split into 1a (define, check, run) and 1b (replay and revise). Still open: which chain kinds, and the spec format.
 
 Also open, not yet ordered:
 
