@@ -107,16 +107,29 @@ The core primitive is prepare → call → check (0002 §6). Thinking since then
 
 This is the function-definition analogy again: chains are defined, named, used inside other chains and passed as arguments.
 
-**Calls are defined in the runtime.** "Call" here means the middle step of prepare → call → check, not running a chain. The spec language composes; it does not introduce new effects. There is nothing like an `exec` that runs arbitrary code. So:
+**Computation happens only in calls.** "Call" here means the middle step of prepare → call → check, not running a chain. The spec language wires calls together; it does not compute anything itself. This is current thinking, held with some uncertainty.
 
-- **Two levels of extension.** The spec language is open: anyone writing a harness defines chains. The runtime's set of calls is closed, and is extended only by changing the runtime, through its own assurance. This keeps 0002 §4.3's split ("new behaviour by filling a slot, a new kind of node only by changing the runtime"), with calls in place of node types.
-- **Every possible effect is listed in the runtime.** A spec can only arrange calls the runtime already provides, so the policy checker never meets an effect it does not know.
-- **An `exec` will probably be wanted sooner or later.** Many languages keep one, because a fixed set of calls never covers everything and an escape hatch is cheaper than waiting for the runtime to grow. Running tests on generated code, which myelin needs, is already this case (0001's "action nodes that run model output are hot spots"). If one comes, 0001 and 0002 point the same way: make it a sanctioned, declared call, sandboxed with declared capabilities and visible to the checker and the record, like Rust's `unsafe`. Not a back door.
+**A further hypothesis: small composable computations beat monoliths.** This sits alongside the README's hypothesis, and like it should be tested rather than assumed.
+
+**Four tiers, by analogy with a programming language** that has built-in functions and operators, libraries written by users, and functions written in other languages (as R does with Rcpp):
+
+| What | Where it lives |
+|---|---|
+| Wiring chains together | the runtime |
+| Common, frequently used calls | built-in calls |
+| Most extensions | chains composed from built-in calls |
+| Edge cases | user-defined calls |
+
+Consequences noticed so far (not decided):
+
+- **User-defined calls are the sanctioned `exec`.** Some kind of `exec` will be needed. Running tests on generated code, which myelin needs, is already this case (0001's "action nodes that run model output are hot spots"). Following 0001 and 0002, a user-defined call should declare its input and output types and its capabilities, run sandboxed, and be visible to the checker and the record, like Rust's `unsafe`.
+- **Assessment effort concentrates where it should.** Built-in calls are assured once, with the runtime. Composed chains add no new effects. User-defined calls are the only new code an assessor must read, and the checker can list every one. This is 0002 §10's claim that assessment concentrates on a small set of functions rather than unbounded trajectories.
+- **Every computation is recorded**, however small, because it happens in a call. That makes the record fine-grained, and lets each small piece be replayed and revised on its own. The cost is volume. One option: calls that are deterministic and have no effects need only their inputs recorded, because replay can recompute their outputs.
+- **Calls may fall into kinds** that the checker and the record treat differently: deterministic with no effects, deterministic with effects, and model calls.
 
 **Not yet settled:**
 
-- Does the spec language compute anything itself (transform data, fill templates, validate shapes), or only wire calls together? The less it computes, the more the runtime's set of calls must cover, and the sooner `exec` is wanted.
-- Where are named types defined: in the spec language, the runtime, or both? If people define chains, they will probably need to define the types those chains exchange.
+- Where are named types defined? The same four-tier pattern may apply: built-in types, plus types defined in the spec language.
 - Which slots does a primitive have? So far: prep, call, check, the steering prompt and a budget.
 
 ### Sequencing
@@ -137,7 +150,7 @@ To settle in this order:
    - Wiring is declared for now. Is extension without editing met by named-type dispatch over a registry in the spec, by higher-order chains, or by both?
    - No match or more than one match as a compile error: does an unhandled "not possible" pass up to the enclosing chain, and how does exhaustiveness live with adding new types?
    - Recombining: is a list enough, or is a record-shaped join needed too? When does recombining start, and how are partial failures handled?
-2. **What does "extensible" mean?** In progress: see "Extensibility" above. Named composition in the spec language, with calls closed in the runtime. Still open: how much the spec language computes, where types are defined, and which slots a primitive has.
+2. **What does "extensible" mean?** In progress: see "Extensibility" above. Named composition in the spec language; computation only in calls, in four tiers from runtime to user-defined calls. Still open: where types are defined, and which slots a primitive has.
 3. **How far does the first stage go?** What exactly sits in step 1 of the sequencing, and what counts as done?
 
 Also open, not yet ordered:
