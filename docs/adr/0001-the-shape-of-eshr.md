@@ -23,7 +23,7 @@ This ADR records, in outline, what eshr is made of and how the parts fit togethe
 
 - **The primitive is prepare → call → check.** The prepare step builds the input, the call does the work, and the check judges the result.
 - **Every primitive is a chain.** A single primitive is a chain with one link.
-- **Prepare and check are chains too**, built from the same primitive. The nesting stops at a single call, built-in or user-defined.
+- **Prepare and check are chains too**, built from the same primitive. The nesting stops where a prepare or check step just passes its input on unchanged.
 - **Context assemblers and check-step chains are built in eshr**, as families of chains. They are not parts of the runtime. A context assembler is one kind of preparer; others assemble parameters for deterministic calls.
 - **The check decides whether to stop or loop.** It either outputs, or goes round again with something that helps the preparer do better.
 - **The output is the call's result, or "not possible".**
