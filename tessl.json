@@ -1,0 +1,12 @@
+{
+  "name": "eshr",
+  "mode": "vendored",
+  "dependencies": {
+    "mhclg-aaai/myelin": {
+      "version": "0.5.2"
+    }
+  },
+  "agents": [
+    "claude-code"
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "name": "mhclg-aaai/myelin",
+  "version": "0.5.2",
+  "summary": "Thinking tools and engineering conventions to accelerate project development",
+  "private": true,
+  "skills": {
+    "adr": {
+      "path": "skills/adr/SKILL.md"
+    },
+    "facilitated-discovery": {
+      "path": "skills/facilitated-discovery/SKILL.md"
+    },
+    "git-workflow": {
+      "path": "skills/git-workflow/SKILL.md"
+    },
+    "history": {
+      "path": "skills/history/SKILL.md"
+    },
+    "plans": {
+      "path": "skills/plans/SKILL.md"
+    },
+    "setup": {
+      "path": "skills/setup/SKILL.md"
+    },
+    "skill-forge": {
+      "path": "skills/skill-forge/SKILL.md"
+    },
+    "test-first-workflow": {
+      "path": "skills/test-first-workflow/SKILL.md"
+    }
+  }
+}

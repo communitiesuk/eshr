@@ -1,0 +1,10 @@
+{"type":"queue-operation","operation":"enqueue","content":"x"}
+{"type":"user","isSidechain":false,"message":{"role":"user","content":"What should we do?"}}
+{"type":"assistant","isSidechain":false,"message":{"role":"assistant","content":[{"type":"thinking","thinking":"hmm","signature":"x"}]}}
+{"type":"assistant","isSidechain":false,"message":{"role":"assistant","content":[{"type":"text","text":"Two options."}]}}
+{"type":"assistant","isSidechain":false,"message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_M","name":"AskUserQuestion","input":{"questions":[{"question":"Which?","header":"Which","multiSelect":false,"options":[{"label":"Left","description":"go left"},{"label":"Right","description":"go right"}]}]}}]}}
+{"type":"user","isSidechain":false,"message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_M","content":"The user answered: \"Which?\"=\"Left\""}]}}
+{"type":"user","isMeta":true,"isSidechain":false,"message":{"role":"user","content":"meta"}}
+{"type":"attachment","isSidechain":false,"attachment":{"type":"queued_command","commandMode":"prompt","humanTurn":true,"origin":{"kind":"human"},"prompt":"Also, go slowly."}}
+{"type":"assistant","isSidechain":true,"message":{"role":"assistant","content":[{"type":"text","text":"side"}]}}
+{"type":"assistant","isSidechain":false,"message":{"role":"assistant","content":[{"type":"text","text":"Going left, slowly."}]}}

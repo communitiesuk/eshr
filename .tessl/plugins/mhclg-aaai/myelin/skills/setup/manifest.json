@@ -1,0 +1,55 @@
+{
+  "required": [
+    {
+      "id": "git-present",
+      "label": "git present",
+      "prose": "git must be on PATH. The workflow's mechanics are a shell script that drives git directly.",
+      "check_command": "command -v git",
+      "fix_kind": "guidance",
+      "fix_guidance": "install git, e.g. https://git-scm.com/downloads"
+    },
+    {
+      "id": "bash-present",
+      "label": "Bash present",
+      "prose": "Bash must be available. The workflow's mechanics are a shell script.",
+      "check_command": "command -v bash",
+      "fix_kind": "guidance",
+      "fix_guidance": "install Bash via your system package manager"
+    },
+    {
+      "id": "host-cli-present",
+      "label": "host CLI present (where a remote exists)",
+      "when": "remote-exists",
+      "prose": "A host CLI is needed wherever the repository has a remote (gh for GitHub). git-workflow lands work by opening and merging a pull request; without the host CLI the PR path is unavailable — the workflow pushes the branch and stops.",
+      "check_command": "command -v gh",
+      "fix_kind": "guidance",
+      "fix_guidance": "install the host CLI, e.g. https://cli.github.com"
+    },
+    {
+      "id": "resolvable-trunk",
+      "label": "resolvable trunk (where a remote exists)",
+      "when": "remote-exists",
+      "prose": "git-workflow derives the branch it forks from — a local dev, a local develop, or whatever refs/remotes/origin/HEAD names — and never reads it from configuration. A repository where none of these resolves is treated as not set up, and the workflow stops rather than guess.",
+      "fix_kind": "command",
+      "fix_command": "git remote set-head origin -a"
+    }
+  ],
+  "desirable": [
+    {
+      "id": "merge-settings",
+      "label": "host configured for merge commits only",
+      "prose": "The host should be configured for merge commits only — no squash, no rebase, no fast-forward — so landed work preserves its commit structure.",
+      "fix_kind": "command",
+      "fix_command": "gh api -X PATCH repos/{owner}/{repo} -F allow_squash_merge=false -F allow_rebase_merge=false"
+    }
+  ],
+  "reported": [
+    {
+      "id": "gh-pr-merge-opt-in",
+      "label": "letting the agent land its own work",
+      "prose": "git-workflow lands most artefacts by merging their pull request, which needs a harness permission for the merge command. Without it the agent opens the pull request and stops, leaving the artefact waiting as an open PR — deliberate, not a failure. To let the agent land unattended, allow the merge command. This is a user decision: reported, never checked pass/fail and never set.",
+      "opt_in_line": "Bash(gh pr merge *)",
+      "note": "Add the opt-in line to .claude/settings.json (checked in, for a repository that wants it) or .claude/settings.local.json (per clone)."
+    }
+  ]
+}

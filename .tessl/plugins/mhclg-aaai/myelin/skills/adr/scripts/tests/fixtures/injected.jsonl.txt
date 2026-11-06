@@ -1,0 +1,8 @@
+{"type":"user","isMeta":true,"isSidechain":false,"message":{"role":"user","content":"META-HANDBACK from a subagent"}}
+{"type":"user","isSidechain":false,"message":{"role":"user","content":"<system-reminder>ANGLE-INJECTED</system-reminder>"}}
+{"type":"user","isSidechain":false,"message":{"role":"user","content":[{"type":"text","text":"<command-name>ANGLE-BLOCK</command-name>"}]}}
+{"type":"attachment","isSidechain":false,"attachment":{"type":"total_tokens_reminder","content":"ATTACHMENT-REMINDER"}}
+{"type":"attachment","isSidechain":false,"attachment":{"type":"queued_command","commandMode":"task-notification","origin":{"kind":"task-notification"},"prompt":"<task-notification>QUEUED-NOTIFICATION</task-notification>"}}
+{"type":"queue-operation","operation":"enqueue","content":"QUEUE-OP"}
+{"type":"system","isSidechain":false,"content":"SYSTEM-ENTRY"}
+{"type":"user","isSidechain":false,"message":{"role":"user","content":"Kept."}}
