@@ -23,9 +23,9 @@ This ADR records, in outline, what eshr is made of and how the parts fit togethe
 
 - **The primitive is prepare → call → check.** The prepare step builds the input, the call does the work, and the check judges the result.
 - **Every primitive is a chain.** A single primitive is a chain with one link.
-- **Prepare and check are slots, filled by chains** built from the same primitive. The nesting ends at the base primitive, whose slots are filled by the base preparer and the base checker: built-in calls the runtime supplies. Nests go as deep as needed but never recurse without end.
+- **Prepare and check are slots, filled by chains** built from the same primitive, except in the base primitive, where the nesting ends: its slots are filled by the base preparer and the base checker, built-in calls the runtime supplies. Nests go as deep as needed but never recurse without end.
 - **The base checker can only be used with the base call.** As an opening position, every other checker is a primitive.
-- **Context assemblers and check-step chains are built in eshr**, as families of chains; only the base preparer and checker come from the runtime. A context assembler is one kind of preparer; others assemble parameters for deterministic calls.
+- **Context assemblers and check-step chains are built in eshr**, as families of chains; the base preparer, call and checker are built-in calls the runtime supplies. A context assembler is one kind of preparer; others assemble parameters for deterministic calls.
 - **The check decides whether to stop or loop.** It either outputs, or goes round again with something that helps the preparer do better. A retry limit caps the looping; exceeding it means "not possible".
 - **The output is the call's result, or "not possible".**
 - **Each primitive has something like a system prompt** that steers its preparer.
@@ -43,7 +43,7 @@ This ADR records, in outline, what eshr is made of and how the parts fit togethe
 - **There are three kinds of chain:** sequential (one link at a time, in order), parallel (each element of one link's output goes to a separate primitive) and conditional (the next link is the one whose declared input accepts the output's type). Parallel results can be combined by feeding them to a chain prepared to receive them.
 - **Wiring is declared.** A chain lists its own links, as a function definition does.
 - **"Not possible" is passed on along a chain, or up to the parent** where primitives are nested.
-- **Any other declared output type that no next link's declared input accepts, or that more than one accepts, stops the harness compiling.** This is held provisionally.
+- **Where a link has a next link, any other declared output type that no next link's declared input accepts, or that more than one accepts, stops the harness compiling.** This is held provisionally.
 
 ### Scheduling, events and humans
 
@@ -61,7 +61,7 @@ This ADR records, in outline, what eshr is made of and how the parts fit togethe
   - built-in calls, for common operations: eshr's developers;
   - chains composed from built-in calls, for most extensions: harness developers;
   - user-defined calls, for edge cases: harness developers.
-- **Built-in calls, the base preparer and checker first among them, are defined in the runtime.** User-defined calls, a way to run outside code, will be needed.
+- **Built-in calls, the base preparer, call and checker among them, are defined in the runtime.** User-defined calls, a way to run outside code, will be needed.
 - **Types follow the same pattern:** built-in, plus user-defined.
 
 ### The harness spec
