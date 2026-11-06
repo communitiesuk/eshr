@@ -39,6 +39,28 @@ The core primitive is prepare → call → check (0002 §6). Thinking since then
 - **Multiplayer async, not single-player turn-taking.** One aim is to move away from one person and one agent taking turns, towards many people working asynchronously. Keeping state rather than a process is the way in: a run lives in stored state, a block is recorded with its reason, and an event restarts the run. Who resolves a block is a matter of who can see the state and act on it, not whose turn it is. The "human side" is therefore mostly the runtime's state and event model, plus whatever shows that state to people.
 - **The model call layer is an implementation detail.** For single tool-less model calls, the Agent SDK (0005) may be the wrong base, because it is itself an open-loop harness. This belongs with other implementation choices such as language, in later ADRs.
 
+### Chains and branching (open question 1, in progress)
+
+**Inside a primitive.**
+
+- **The check decides whether to stop or loop.** It either stops and outputs, or goes round again with something that helps the preparer do better. It works as a review loop.
+- **The output is the result of the call, or "that wasn't possible".** Both are outputs. The second is 0002 §6's escape edge, expressed as a kind of output rather than a separate exit.
+- **A primitive has something like a system prompt that steers its preparer.** It states what the primitive is for.
+
+**Between primitives.**
+
+- **Input and output shapes are the contract.** Each primitive declares the shape of input it expects and output it produces. p0's output must be compatible with p1's input. A lot of the architecture could hang on this.
+- **There are three kinds of chain:**
+  - *Sequential:* one link at a time, in order.
+  - *Parallel:* one link outputs a list, and each element becomes the input to a separate primitive, processed in parallel. The opposite case, recombining results, is not yet thought through but will probably be needed.
+  - *Conditional:* one link can produce a range of output types, and the next link is the one whose input shape matches. This could extend to parallel processing, for example a list whose elements have different types.
+
+**Implications noticed so far (not decided):**
+
+- **Branching is type-directed.** Choosing the next link works like pattern matching on the output's type. If "not possible" is an output type, escalation is not a special mechanism: it is a link whose input matches that type.
+- **This fits 0003's claim that the DAG "falls out of the contracts".** If links are matched by shape, the graph can be worked out from declared types, and so can the parallelism.
+- **Assurance needs the matching to be static.** The policy checker can enumerate behaviour only if it can compute every possible match before anything runs.
+
 ### Sequencing
 
 Working from first principles means starting with very basic primitives. So:
@@ -53,7 +75,11 @@ Working from first principles means starting with very basic primitives. So:
 
 To settle in this order:
 
-1. **How do chains and branching relate?** If everything is a chain, where does branching come from? Possibilities include escape edges, a link choosing from a fixed set of next links, or something else. The README talks about a "declared graph". The answer decides what the spec actually is.
+1. **How do chains and branching relate?** In progress: see "Chains and branching" above. Still open within it:
+   - Is a chain's wiring declared (the chain lists its links, and types are checked against them), or derived (any primitive in scope whose input matches can run)?
+   - What happens when no link matches an output, or more than one does?
+   - How do parallel results recombine, and what does recombining receive when some elements came back "not possible"?
+   - Are shapes structural (same fields means same type) or named (two identical shapes with different meanings are different types, such as a draft and an approved draft)?
 2. **What does "extensible" mean?** Is it 0002's slots (new behaviour by filling a slot, a new kind of node only by changing the runtime), or something more?
 3. **How far does the first stage go?** What exactly sits in step 1 of the sequencing, and what counts as done?
 
