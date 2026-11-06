@@ -87,7 +87,9 @@ The core primitive is prepare → call → check (0002 §6). Thinking since then
 - **More than one match as an error rules out implicit fan-out**, where one output goes to two consumers (say a reviewer and a logger). Fan-out would need the explicit parallel form. That is probably a good thing.
 - **Drawback: exhaustiveness pulls against extension.** Adding a new output type (the new-document case) breaks every exhaustive match on that output until each is updated. This is the "expression problem", and it bears on question 2.
 
-*Recombining: proposed as passing several chains' outputs as list elements to a chain that handles lists.*
+*Recombining: proposed as passing several chains' outputs as elements of a collection to a chain that handles collections.*
+
+"Collection" here is not a formal list: the elements need not be ordered or of one type. The points below were first made about a typed list. They still apply to a collection, except that a collection already allows mixed types.
 
 - **A list fits a parallel map**, where every element has the same type. **It fits fan-in from different chains less well**: the list's element type becomes a union, and which result came from which branch is lost. A record with one named field per branch may suit that case. So there may be two kinds of recombining: *gather* (map results into a list) and *join* (different branches into a record).
 - **When does recombining start?** When all results are in, the first, or a quorum? Waiting for all of them blocks for ever if one branch waits on a person who never responds, so it depends on timeouts as events.
