@@ -39,7 +39,7 @@ This ADR records, in outline, what eshr is made of and how the parts fit togethe
 ### Chains
 
 - **Declared input and output shapes are the contract.** One link's output must be compatible with the next link's input.
-- **There are three kinds of chain:** sequential (one link at a time, in order), parallel (each element of one link's output goes to a separate primitive) and conditional (the next link is the one whose input matches the output's type). Parallel results are recombined as a collection, not an ordered list.
+- **There are three kinds of chain:** sequential (one link at a time, in order), parallel (each element of one link's output goes to a separate primitive) and conditional (the next link is the one whose input matches the output's type). Gathering parallel results uses a collection, not an ordered list.
 - **Wiring is declared.** A chain lists its own links, as a function definition does.
 - **Shape is compatibility, not identity.** Two primitives may share shapes and do different things. Types are named, so conditional chains match on named types, not bare shape.
 - **No match, or more than one, stops the harness compiling.** This is held provisionally.
@@ -48,7 +48,7 @@ This ADR records, in outline, what eshr is made of and how the parts fit togethe
 ### Scheduling, events and humans
 
 - **Scheduling policy belongs to each harness.** A harness works until no tasks are left, then waits for people to make more work. Those conditions are configurable.
-- **Choosing which person to involve is an ordinary step**, not wiring.
+- **Choosing which person to involve is an ordinary step.**
 - **Limits and timeouts are events**, to be handled gracefully like any other.
 - **Supersession is left to the harness**: the myelin replication.
 
