@@ -97,6 +97,28 @@ The core primitive is prepare → call → check (0002 §6). Thinking since then
 - **Order.** Parallel results arrive in any order. For replay to be reproducible, the list should follow input order, not arrival order.
 - **Size.** A long list going into a model call needs its preparer to select and compress. That is the context assembler again. The output's confidentiality label is the join over every element (0002 §5).
 
+### Extensibility (open question 2, in progress)
+
+**What "extensible" means: named composition in the spec language.** A person can:
+
+- define a new chain by linking existing chains;
+- give it a name;
+- use it to define further chains, or pass it in to fill a slot and so make a new chain link (higher-order composition).
+
+This is the function-definition analogy again: chains are defined, named, called and passed as arguments.
+
+**Calls are defined in the runtime.** The spec language composes; it does not introduce new effects. There is nothing like an `exec` that runs arbitrary code. So:
+
+- **Two levels of extension.** The spec language is open: anyone writing a harness defines chains. The runtime's set of calls is closed, and is extended only by changing the runtime, through its own assurance. This keeps 0002 §4.3's split ("new behaviour by filling a slot, a new kind of node only by changing the runtime"), with calls in place of node types.
+- **Every possible effect is listed in the runtime.** A spec can only arrange calls the runtime already provides, so the policy checker never meets an effect it does not know.
+- **An `exec` will probably be wanted sooner or later.** Many languages keep one, because a fixed set of calls never covers everything and an escape hatch is cheaper than waiting for the runtime to grow. Running tests on generated code, which myelin needs, is already this case (0001's "action nodes that run model output are hot spots"). If one comes, 0001 and 0002 point the same way: make it a sanctioned, declared call, sandboxed with declared capabilities and visible to the checker and the record, like Rust's `unsafe`. Not a back door.
+
+**Not yet settled:**
+
+- Does the spec language compute anything itself (transform data, fill templates, validate shapes), or only wire calls together? The less it computes, the more the runtime's set of calls must cover, and the sooner `exec` is wanted.
+- Where are named types defined: in the spec language, the runtime, or both? If people define chains, they will probably need to define the types those chains exchange.
+- Which slots does a primitive have? So far: prep, call, check, the steering prompt and a budget.
+
 ### Sequencing
 
 Working from first principles means starting with very basic primitives. So:
@@ -115,7 +137,7 @@ To settle in this order:
    - Wiring is declared for now. Is extension without editing met by named-type dispatch over a registry in the spec, by higher-order chains, or by both?
    - No match or more than one match as a compile error: does an unhandled "not possible" pass up to the enclosing chain, and how does exhaustiveness live with adding new types?
    - Recombining: is a list enough, or is a record-shaped join needed too? When does recombining start, and how are partial failures handled?
-2. **What does "extensible" mean?** Is it 0002's slots (new behaviour by filling a slot, a new kind of node only by changing the runtime), or something more?
+2. **What does "extensible" mean?** In progress: see "Extensibility" above. Named composition in the spec language, with calls closed in the runtime. Still open: how much the spec language computes, where types are defined, and which slots a primitive has.
 3. **How far does the first stage go?** What exactly sits in step 1 of the sequencing, and what counts as done?
 
 Also open, not yet ordered:
