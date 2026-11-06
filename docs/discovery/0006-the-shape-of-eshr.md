@@ -74,7 +74,26 @@ The core primitive is prepare → call → check (0002 §6). Thinking since then
 - **Ordering and waiting may collapse to state.** "B after A" is B needing A's output. Waiting for an external condition (a CI result, an approval, a date) is a typed value that arrives in state as an event. This collapses only if all ordering is expressed as data dependency and every external condition enters state as a typed value.
 - **Where it may not collapse:** limits (budget, rate, concurrency), timeouts (the absence of an event, unless a clock is an event source), and supersession (when intent changes, pending work built on the old intent should be cancelled, 0002 §7).
 - **Which human to involve is a decision, not wiring.** Choosing whom to tag is a final-stage primitive (a model or a rota lookup) whose output names the person. What is genuinely a runtime fact is whether and when they respond, and that is an event entering state, like any external condition. Humans and external systems are both sources of events.
+- **Limits and timeouts are external events too.** Budget exhausted, rate limited and timed out are events that may block, and must be handled gracefully, like any other outcome. One nuance: a limit such as budget has to be enforced *before* the spend (a safety property, 0002 §2). The event reports that the runtime refused, not that the limit was crossed. A timeout needs a declared clock as its event source.
+- **Supersession is a harness concern, and myelin is the harness.** eshr grows out of myelin (`communitiesuk/myelin`), whose whole point is to manage real-world project events such as supersession. The runtime needs only enough mechanism for state changes to invalidate pending work: for example, readiness is re-evaluated over current state, and an in-flight output based on superseded input fails its check.
 - **Implication for question 2:** the runtime may provide the mechanism (state, events, running until there is nothing left to do) while each harness's spec supplies the scheduling policy.
+
+**Matching and recombining: first thoughts, with drawbacks.**
+
+*No link matches, or more than one does: proposed as a compile error.*
+
+- **No match is prevented at run time already**, because a call's output is checked against its declared type before anything uses it. An output that fits no declared type fails the check: it loops back or becomes "not possible".
+- **So every output, including "not possible", must have a handler.** This is like an exhaustive `match`. *Drawback:* writing an escalation path at every link is heavy. *Possible relief:* an unhandled "not possible" passes up to the enclosing chain, like Rust's `?`. A catch-all arm would weaken assurance, but the checker could list catch-all arms.
+- **More than one match as an error rules out implicit fan-out**, where one output goes to two consumers (say a reviewer and a logger). Fan-out would need the explicit parallel form. That is probably a good thing.
+- **Drawback: exhaustiveness pulls against extension.** Adding a new output type (the new-document case) breaks every exhaustive match on that output until each is updated. This is the "expression problem", and it bears on question 2.
+
+*Recombining: proposed as passing several chains' outputs as list elements to a chain that handles lists.*
+
+- **A list fits a parallel map**, where every element has the same type. **It fits fan-in from different chains less well**: the list's element type becomes a union, and which result came from which branch is lost. A record with one named field per branch may suit that case. So there may be two kinds of recombining: *gather* (map results into a list) and *join* (different branches into a record).
+- **When does recombining start?** When all results are in, the first, or a quorum? Waiting for all of them blocks for ever if one branch waits on a person who never responds, so it depends on timeouts as events.
+- **Partial failure.** Elements may be "not possible". Either the recombining chain accepts a list of result-or-failure, or one failure fails the lot.
+- **Order.** Parallel results arrive in any order. For replay to be reproducible, the list should follow input order, not arrival order.
+- **Size.** A long list going into a model call needs its preparer to select and compress. That is the context assembler again. The output's confidentiality label is the join over every element (0002 §5).
 
 ### Sequencing
 
@@ -83,7 +102,7 @@ Working from first principles means starting with very basic primitives. So:
 1. The primitive, a minimal runtime and the record.
 2. Simple chains, evaluated on their own merits by replaying their records.
 3. A growing library of chains, each designed, implemented, tested and revised.
-4. A first real graph. Notes 0003 and 0004 suggest myelin's drafter → reviewer → reviser chain, but it is a long way off.
+4. The first full, real-world harness: a replication of myelin. Smaller pieces of it, such as myelin's drafter → reviewer → reviser chain (0003, 0004), may come earlier, but the whole is a long way off.
 5. Comparison with existing agents, last.
 
 ## Open questions
@@ -92,9 +111,8 @@ To settle in this order:
 
 1. **How do chains and branching relate?** In progress: see "Chains and branching" above. Still open within it:
    - Wiring is declared for now. Is extension without editing met by named-type dispatch over a registry in the spec, by higher-order chains, or by both?
-   - What happens when no link matches an output, or more than one does?
-   - How do parallel results recombine, and what does recombining receive when some elements came back "not possible"?
-   - Does scheduling collapse entirely to state and events? If not, where do limits, timeouts and supersession live?
+   - No match or more than one match as a compile error: does an unhandled "not possible" pass up to the enclosing chain, and how does exhaustiveness live with adding new types?
+   - Recombining: is a list enough, or is a record-shaped join needed too? When does recombining start, and how are partial failures handled?
 2. **What does "extensible" mean?** Is it 0002's slots (new behaviour by filling a slot, a new kind of node only by changing the runtime), or something more?
 3. **How far does the first stage go?** What exactly sits in step 1 of the sequencing, and what counts as done?
 
