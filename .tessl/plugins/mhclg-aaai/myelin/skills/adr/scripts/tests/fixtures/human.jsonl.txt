@@ -1,0 +1,2 @@
+{"type":"user","isSidechain":false,"message":{"role":"user","content":"First message, typed as a string."}}
+{"type":"user","isSidechain":false,"message":{"role":"user","content":[{"type":"text","text":"Second message,\nas text blocks."}]}}

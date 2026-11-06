@@ -1,0 +1,3 @@
+{"type":"user","isSidechain":true,"message":{"role":"user","content":"SIDECHAIN-USER"}}
+{"type":"assistant","isSidechain":true,"message":{"role":"assistant","content":[{"type":"text","text":"SIDECHAIN-ASSISTANT"}]}}
+{"type":"user","isSidechain":false,"message":{"role":"user","content":"Main thread."}}

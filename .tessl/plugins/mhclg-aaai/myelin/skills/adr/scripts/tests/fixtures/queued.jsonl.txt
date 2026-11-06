@@ -1,0 +1,4 @@
+{"type":"user","isSidechain":false,"message":{"role":"user","content":"Start of turn."}}
+{"type":"assistant","isSidechain":false,"message":{"role":"assistant","content":[{"type":"text","text":"Working on it."}]}}
+{"type":"attachment","isSidechain":false,"attachment":{"type":"queued_command","commandMode":"prompt","humanTurn":true,"origin":{"kind":"human"},"prompt":"Sent while you were working."}}
+{"type":"assistant","isSidechain":false,"message":{"role":"assistant","content":[{"type":"text","text":"Noted."}]}}

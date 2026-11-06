@@ -1,0 +1,31 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd \"${CLAUDE_PROJECT_DIR}\" && tessl hook run --plugin-path=\"${CLAUDE_PROJECT_DIR}/.tessl/plugins/mhclg-aaai/myelin\" --event=\"SessionStart\" --agent=claude-code --schema-version=1"
+          }
+        ]
+      }
+    ]
+  },
+  "tessl": {
+    "hooks": {
+      "mhclg-aaai/myelin": [
+        {
+          "nativeEvent": "SessionStart",
+          "hookEntry": {
+            "hooks": [
+              {
+                "type": "command",
+                "command": "cd \"${CLAUDE_PROJECT_DIR}\" && tessl hook run --plugin-path=\"${CLAUDE_PROJECT_DIR}/.tessl/plugins/mhclg-aaai/myelin\" --event=\"SessionStart\" --agent=claude-code --schema-version=1"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

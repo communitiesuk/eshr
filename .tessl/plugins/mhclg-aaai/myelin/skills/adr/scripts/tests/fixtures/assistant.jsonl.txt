@@ -1,0 +1,2 @@
+{"type":"assistant","isSidechain":false,"message":{"role":"assistant","content":[{"type":"thinking","thinking":"SECRET-REASONING","signature":"x"}]}}
+{"type":"assistant","isSidechain":false,"message":{"role":"assistant","content":[{"type":"text","text":"Here is my answer."},{"type":"tool_use","id":"toolu_A","name":"Bash","input":{"command":"TOOL-CALL-TEXT"}}]}}
