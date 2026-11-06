@@ -61,6 +61,21 @@ The core primitive is prepare → call → check (0002 §6). Thinking since then
 - **This fits 0003's claim that the DAG "falls out of the contracts".** If links are matched by shape, the graph can be worked out from declared types, and so can the parallelism.
 - **Assurance needs the matching to be static.** The policy checker can enumerate behaviour only if it can compute every possible match before anything runs.
 
+**Wiring: declared, with the case for runtime matching heard.**
+
+- **Current view: a chain lists its own links.** In the language spec, chains are like function definitions. A sequential chain is composition, a parallel chain is `map`, and a conditional chain is a `match` on the output's type.
+- **The case for runtime matching** is mainly extension without editing. Adding a handler for a new kind of document should not mean editing every chain that might produce one. That case was found persuasive enough to keep open. Other reasons heard: human resolvers, running work when its inputs are ready, routing requests for more context, and swapping in revised primitives.
+- **Shape alone cannot select a link.** Two primitives can have the same input and output shapes and do different things, and forbidding that would be needlessly constraining. So shape is the compatibility check, not what chooses the link. Selection is by name: a named link in a declared chain, or a named type (a draft and an approved draft are different types even with identical fields). This answers the structural-or-named question in favour of named types, and means conditional chains match on named types, not bare shape.
+- **Middle grounds noted:** a registry that is itself part of the spec, so the checker can still list every match and a new registration shows as a diff; and higher-order chains that take a primitive as a parameter, as `map` takes a function.
+
+**Scheduling: possibly all state and events.**
+
+- **The intended behaviour:** the system keeps working until there are no tasks left for it (review, response, refactoring, drafting and so on), then waits until humans make more work available. The conditions for this should be configurable for each harness built with the runtime.
+- **Ordering and waiting may collapse to state.** "B after A" is B needing A's output. Waiting for an external condition (a CI result, an approval, a date) is a typed value that arrives in state as an event. This collapses only if all ordering is expressed as data dependency and every external condition enters state as a typed value.
+- **Where it may not collapse:** limits (budget, rate, concurrency), timeouts (the absence of an event, unless a clock is an event source), and supersession (when intent changes, pending work built on the old intent should be cancelled, 0002 §7).
+- **Which human to involve is a decision, not wiring.** Choosing whom to tag is a final-stage primitive (a model or a rota lookup) whose output names the person. What is genuinely a runtime fact is whether and when they respond, and that is an event entering state, like any external condition. Humans and external systems are both sources of events.
+- **Implication for question 2:** the runtime may provide the mechanism (state, events, running until there is nothing left to do) while each harness's spec supplies the scheduling policy.
+
 ### Sequencing
 
 Working from first principles means starting with very basic primitives. So:
@@ -76,10 +91,10 @@ Working from first principles means starting with very basic primitives. So:
 To settle in this order:
 
 1. **How do chains and branching relate?** In progress: see "Chains and branching" above. Still open within it:
-   - Is a chain's wiring declared (the chain lists its links, and types are checked against them), or derived (any primitive in scope whose input matches can run)?
+   - Wiring is declared for now. Is extension without editing met by named-type dispatch over a registry in the spec, by higher-order chains, or by both?
    - What happens when no link matches an output, or more than one does?
    - How do parallel results recombine, and what does recombining receive when some elements came back "not possible"?
-   - Are shapes structural (same fields means same type) or named (two identical shapes with different meanings are different types, such as a draft and an approved draft)?
+   - Does scheduling collapse entirely to state and events? If not, where do limits, timeouts and supersession live?
 2. **What does "extensible" mean?** Is it 0002's slots (new behaviour by filling a slot, a new kind of node only by changing the runtime), or something more?
 3. **How far does the first stage go?** What exactly sits in step 1 of the sequencing, and what counts as done?
 
