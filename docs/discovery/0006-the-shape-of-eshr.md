@@ -31,7 +31,7 @@ The core primitive is prepare → call → check (0002 §6). Thinking since then
 
 ### What gets built in eshr
 
-5. **A library of chains:** preparers, checkers and the calls between them, grown from the bottom up.
+5. **A library of chains:** preparers, checkers, and the primitives whose call steps they serve, grown from the bottom up.
 
 ### Consequences drawn so far
 
@@ -105,9 +105,9 @@ The core primitive is prepare → call → check (0002 §6). Thinking since then
 - give it a name;
 - use it to define further chains, or pass it in to fill a slot and so make a new chain link (higher-order composition).
 
-This is the function-definition analogy again: chains are defined, named, called and passed as arguments.
+This is the function-definition analogy again: chains are defined, named, used inside other chains and passed as arguments.
 
-**Calls are defined in the runtime.** The spec language composes; it does not introduce new effects. There is nothing like an `exec` that runs arbitrary code. So:
+**Calls are defined in the runtime.** "Call" here means the middle step of prepare → call → check, not running a chain. The spec language composes; it does not introduce new effects. There is nothing like an `exec` that runs arbitrary code. So:
 
 - **Two levels of extension.** The spec language is open: anyone writing a harness defines chains. The runtime's set of calls is closed, and is extended only by changing the runtime, through its own assurance. This keeps 0002 §4.3's split ("new behaviour by filling a slot, a new kind of node only by changing the runtime"), with calls in place of node types.
 - **Every possible effect is listed in the runtime.** A spec can only arrange calls the runtime already provides, so the policy checker never meets an effect it does not know.
