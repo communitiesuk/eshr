@@ -9,7 +9,7 @@ date: 2026-11-06
 
 ## Context
 
-eshr is a runtime for building harnesses: the code around a model that decides what happens next. It can build an open loop, where the model decides, as easily as anything else. What it adds is the ability to build scoped harnesses, where the harness decides (README, "Why this exists"). eshr takes no position beyond hypotheses to be tested.
+eshr is a runtime for building harnesses: the code around a model. It can build an open loop, where the model decides, as easily as anything else. What it adds is the ability to build scoped harnesses, where the harness decides (README, "Why this exists"). eshr takes no position beyond hypotheses to be tested.
 
 eshr grows out of myelin. The first full, real-world harness built with it will be a replication of myelin.
 
@@ -23,8 +23,8 @@ This ADR records, in outline, what eshr is made of and how the parts fit togethe
 
 - **The primitive is prepare → call → check.** The prepare step builds the input, the call does the work, and the check judges the result.
 - **Every primitive is a chain.** A single primitive is a chain with one link.
-- **Prepare and check are chains too**, built from the same primitive. Plain functions are the base case that stops the nesting.
-- **The context assembler and check-step chains are built in eshr**, as families of chains. They are not parts of the runtime. A context assembler is one kind of preparer; others assemble parameters for deterministic calls.
+- **Prepare and check are chains too**, built from the same primitive. The nesting stops at a single call, built-in or user-defined.
+- **Context assemblers and check-step chains are built in eshr**, as families of chains. They are not parts of the runtime. A context assembler is one kind of preparer; others assemble parameters for deterministic calls.
 - **The check decides whether to stop or loop.** It either outputs, or goes round again with something that helps the preparer do better.
 - **The output is the call's result, or "not possible".**
 - **Each primitive has something like a system prompt** that steers its preparer.
@@ -55,12 +55,13 @@ This ADR records, in outline, what eshr is made of and how the parts fit togethe
 ### Extensibility and computation
 
 - **Extensible means named composition.** A person can link existing chains into a new chain, name it, and use it in further chains or pass it in to fill a slot.
-- **Computation happens only in calls**, in four tiers. This is held provisionally.
+- **Computation happens only in calls.** This is held provisionally.
+- **Work falls into four tiers:**
   - Wiring chains together: the runtime.
   - Common calls: built-in calls.
   - Most extensions: chains composed from built-in calls.
   - Edge cases: user-defined calls.
-- **Built-in calls are defined in the runtime.** User-defined calls, a way to run outside code, will be needed; their form is open.
+- **Built-in calls are defined in the runtime.** User-defined calls, a way to run outside code, will be needed.
 - **Types follow the same pattern:** built-in, plus user-defined.
 
 ### The spec
@@ -71,10 +72,10 @@ This ADR records, in outline, what eshr is made of and how the parts fit togethe
 
 ## Alternatives considered
 
-- **Choosing the next link at run time, through a dispatcher or registry.** Not adopted: wiring is declared. Run-time matching would escape the reassessment a spec change triggers, unless the registry were itself in the spec.
+- **Choosing the next link at run time, through a dispatcher or a registry outside the spec.** Not adopted: wiring is declared, and such matching would escape the reassessment a spec change triggers.
 - **Choosing the next link by shape alone.** Rejected: same shape does not mean same behaviour.
 - **Chains written in the implementation language.** Rejected: host code in the spec breaks "computation only in calls" and makes static checking unreliable.
-- **The context assembler and check-step chains as runtime components** (notes 0003, 0004). Replaced by chains built in eshr.
+- **Context assemblers and check-step chains as runtime components** (notes 0003, 0004). Replaced by chains built in eshr.
 - **A substantial interface for "the human side".** Replaced by events, plus whatever shows the harness's state to people.
 - **Note 0002's six node types.** Replaced by a single primitive.
 - **A roadmap issue as the governing artefact.** Not chosen: it would sit outside git history and the trail that links artefacts.
@@ -92,8 +93,8 @@ This ADR records, in outline, what eshr is made of and how the parts fit togethe
   - whether branching is wholly type-directed, and how exhaustive matching lives with adding new types;
   - how recombining works: gather and join, when it fires, partial failure and replay order;
   - the form of user-defined calls, and whether calls fall into kinds the checker and record treat differently;
-  - how the runtime holds state and events, and how limits, timeouts and supersession behave in it;
-  - which government guidance to name.
+  - whether and how the runtime holds state and events, and how limits, timeouts and supersession behave in it;
+  - which government assurance guidance to name, deferred to discovery.
 
 ## References
 
