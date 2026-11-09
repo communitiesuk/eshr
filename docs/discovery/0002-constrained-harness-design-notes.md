@@ -205,21 +205,30 @@ context. This causes **label creep**. Mitigations:
 - **Quarantined nodes** with no capabilities and constrained outputs
   for processing untrusted content.
 
-**Handles: keys held by nodes, values held by the runtime.** A node
-that produces data generates its entries, keys and values, like a
-dictionary. The runtime holds the dictionary, and the requirement is
-that it reaches its consumer without any other node seeing it. So the
-**runtime does the routing**, not the nodes: if a node held the
-dictionary and passed it along, every node in between would see the
-values.
-- **Keys** flow along ordinary edges to any node that needs to refer
-  to the data. They carry no content, so they do not taint.
-- **Values** go only to nodes with a declared right to *dereference*
-  them, granted in the spec like a capability. The checker verifies
-  that every dereferencing node is cleared for the value's label; at
-  run time the runtime refuses any lookup the spec did not declare.
-- Keys are **opaque** (holding one reveals nothing) and **unforgeable**
-  (the runtime issues them, so a model cannot invent or alter one).
+**Handles: keys and values as ordinary outputs.** A node that produces
+data can output a dictionary: keys and values both in its output
+signature, with the keys and the values labelled separately ("label
+fields, not messages", below). The requirement is only that keys and
+values are **not both routed to a node that should see only keys**.
+No extra runtime machinery is needed:
+- **A deterministic key-extraction node** projects the keys out of a
+  prior node's output, and only that projection is routed to
+  key-only consumers.
+- **The full dictionary goes directly to its real consumer** (for
+  example a renderer), by an explicit fan-out edge from the producer,
+  not through the nodes in between. The spec must therefore allow a
+  node's output to feed several consumers, including nodes further
+  down the graph.
+- **Ordinary label checking enforces it.** The values carry their own
+  labels, so the checker rejects any edge that delivers them to a node
+  not cleared for them.
+- **Keys must be content-free.** A key derived from content (a sheet
+  named after a person, say) leaks. Producers generate opaque IDs, or
+  the extraction node maps keys to opaque IDs.
+- **Keys can be forged, so lookup is checked.** A model holding keys
+  can invent or alter one. Whatever looks up values does so
+  deterministically against the real dictionary, and an unknown key is
+  a typed failure, not a security hole.
 - *Which* key a node chooses can still carry information: a node that
   picks keys after reading untrusted data can be steered in its
   choice.
@@ -383,18 +392,17 @@ development.
 | `guard` | the specialised loop enclosing an LLM call (§6.4) |
 | `map` / `par` | parallel execution, with recombination by a declared policy (below) |
 
-**Recombination.** Because the runtime holds values and nodes hold
-keys (§5), the runtime can issue a key when a branch *starts*, before
-its value exists, as a promise. The key later resolves to a value or
-to a failure variant. Recombination is then a declared rule about
-when the consumer runs, relative to keys resolving:
+**Recombination.** Each branch of a `map` or `par` ends in a result or
+a failure variant. Recombination is a declared rule about when the
+consumer runs, relative to branches finishing. A branch is identified
+by its input position, which serves as its key for accounting:
 
 | Policy | The consumer runs… |
 |---|---|
-| **wait for all** | when every key has resolved |
-| **stream** | once per key as it resolves, or as an incremental fold over arrivals |
-| **first / k of n** | when enough keys have resolved; the rest are cancelled or ignored |
-| **deadline** | at a time limit, with unresolved keys becoming a `Timeout` failure variant |
+| **wait for all** | when every branch has finished |
+| **stream** | once per branch as it finishes, or as an incremental fold over arrivals |
+| **first / k of n** | when enough branches have finished; the rest are cancelled or ignored |
+| **deadline** | at a time limit, with unfinished branches becoming a `Timeout` failure variant |
 
 A recombining combinator therefore declares:
 - a **completion condition**: all, first, k of n, or a deadline;
@@ -418,8 +426,8 @@ Consequences:
   them back in the same order, or streaming consumers must be
   order-insensitive. Recording fits "the record is the data".
 - **Coverage becomes completeness of accounting** (§6.10): when a
-  branch can fail or time out, an obligation can require every key to
-  appear in the output either as a result or as a declared failure,
+  branch can fail or time out, an obligation can require every branch
+  to appear in the output either as a result or as a declared failure,
   so nothing is silently missing.
 - **Timing-dependent policies loosen a harness** (§6.9). Wait for all
   with fail-closed failure is the most constrained form.
