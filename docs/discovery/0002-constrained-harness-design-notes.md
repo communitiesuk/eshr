@@ -205,6 +205,31 @@ context. This causes **label creep**. Mitigations:
 - **Quarantined nodes** with no capabilities and constrained outputs
   for processing untrusted content.
 
+**Handles: keys held by nodes, values held by the runtime.** A node
+that produces data generates its entries, keys and values, like a
+dictionary. The runtime holds the dictionary, and the requirement is
+that it reaches its consumer without any other node seeing it. So the
+**runtime does the routing**, not the nodes: if a node held the
+dictionary and passed it along, every node in between would see the
+values.
+- **Keys** flow along ordinary edges to any node that needs to refer
+  to the data. They carry no content, so they do not taint.
+- **Values** go only to nodes with a declared right to *dereference*
+  them, granted in the spec like a capability. The checker verifies
+  that every dereferencing node is cleared for the value's label; at
+  run time the runtime refuses any lookup the spec did not declare.
+- Keys are **opaque** (holding one reveals nothing) and **unforgeable**
+  (the runtime issues them, so a model cannot invent or alter one).
+- *Which* key a node chooses can still carry information: a node that
+  picks keys after reading untrusted data can be steered in its
+  choice.
+- Handles make two patterns possible: **prose with handles, then
+  deterministic rendering** (a model writes about data without seeing
+  it, and code inserts the values), and **coverage checks** (§6.10),
+  since coverage can be checked against keys but not against free
+  prose. Handles therefore need to be a first-class type in the spec
+  language.
+
 **Other rules:**
 - **Narrow channels:** a validator turning free text into an
   allow-listed enum or boolean leaves little room for an injection to
@@ -215,6 +240,17 @@ context. This causes **label creep**. Mitigations:
 - **Observed vs asserted:** tag whether a value was observed (test
   result, database read) or asserted by a model. Unverifiable claims
   then cannot pass as facts.
+- **Integrity matters for content, not only transitions.** Untrusted
+  data that never drives a transition can still shape what a person
+  reads, for example by suppressing findings in a report. Outputs
+  meant for people should show, per item, whether code checked it or
+  a model asserted it, and untrusted text rendered to a person needs
+  safe display.
+- **What matters at a sink is its clearance.** Sensitive content
+  costs nothing when it goes to a sink cleared for it. Labels become
+  expensive where model-written prose about sensitive content must
+  reach a sink with a lower clearance on every run, because only a
+  person can release it (probe B1, note 0009).
 - **Keep the lattice small:** a handful of confidentiality levels and
   4–5 integrity classes, plus personal-data flags.
 
@@ -225,7 +261,8 @@ context. This causes **label creep**. Mitigations:
 - Untrusted-labelled data never reaches a node that chooses
   transitions.
 - All loops are bounded, so every run terminates.
-- Declassification from level X requires a human approval node.
+- Declassification from level X requires a human approval node, or a
+  deterministic `declassify` with a declared release rule (§6.2).
 
 **Assessment attaches to the node contract** (capabilities, labels,
 schema), **not the implementation.** Model, prompt or maximum tries
@@ -270,6 +307,14 @@ its output contract by construction, so a checker adds nothing.
   and `endorse` for untrusted data entering by deterministic routes.
   These are the first-class label-relaxing and effect types that §4.3
   requires.
+- **A deterministic `declassify` declares its release rule**, for
+  example "counts per enum value, no free text" or "enums and cell
+  references, no values", so the checker can verify that its output
+  schema releases only what the rule allows. **Open:** how release
+  rules are expressed, and whether automated declassification by
+  aggregation is acceptable or every declassification from a
+  sensitive level needs a person. Probe B1 found this question
+  load-bearing in both of its first two tasks (note 0009).
 
 ### 6.3 Signatures carry schema, label and effects
 
@@ -314,6 +359,16 @@ guard(prep, call, check, max_tries, state_type) : Input → Checked<T> | Escape<
   raises integrity depends on the declared check kind: deterministic
   means real endorsement; a checker containing an LLM guard
   (model-as-judge) gives a **weak endorsement** label downstream.
+- **Endorsement strength follows what vouches for the content, not
+  who runs the check.** A deterministic check that code established
+  a fact is a full endorsement. A deterministic check of only the
+  *form* of a model's judgement (valid enum, handles resolve) is weak,
+  because the judgement's truth still rests on the model.
+- **What weak endorsement may drive is a policy question.** A
+  plausible default: a weakly endorsed value may choose low-stakes
+  routes ("revise again", "move on to human review") but may not
+  authorise egress, an irreversible effect, or skipping a human
+  approval. **Open:** whether this default is right.
 
 ### 6.5 Combinators
 
@@ -326,7 +381,48 @@ development.
 | `branch` | dispatch on variants of a typed sum, including `Escape` and error variants |
 | `loop` | bounded iteration with a declared state type and a maximum number of tries |
 | `guard` | the specialised loop enclosing an LLM call (§6.4) |
-| `map` / `par` | parallel execution and recombination |
+| `map` / `par` | parallel execution, with recombination by a declared policy (below) |
+
+**Recombination.** Because the runtime holds values and nodes hold
+keys (§5), the runtime can issue a key when a branch *starts*, before
+its value exists, as a promise. The key later resolves to a value or
+to a failure variant. Recombination is then a declared rule about
+when the consumer runs, relative to keys resolving:
+
+| Policy | The consumer runs… |
+|---|---|
+| **wait for all** | when every key has resolved |
+| **stream** | once per key as it resolves, or as an incremental fold over arrivals |
+| **first / k of n** | when enough keys have resolved; the rest are cancelled or ignored |
+| **deadline** | at a time limit, with unresolved keys becoming a `Timeout` failure variant |
+
+A recombining combinator therefore declares:
+- a **completion condition**: all, first, k of n, or a deadline;
+- a **delivery mode**: batch or stream;
+- a **failure policy**: fail-closed by default (one failure fails the
+  lot, §6.8), or an explicit opt-in to a collection of results and
+  failures.
+
+Consequences:
+- **Timeouts are failures** (§6.8): a branch that does not finish
+  resolves to a runtime-defined `Timeout` variant, routable like any
+  other. A deadline needs a declared clock as its event source.
+- **Streaming makes labels accumulate.** A streaming consumer keeps
+  state across arrivals, and its label is the join of everything that
+  has arrived so far, rising over time. Streaming consumers need
+  declared state with labels.
+- **Arrival order affects replay.** Wait for all, ordered by input
+  position, is deterministic. Streaming, first-of, k of n and
+  deadlines can depend on which branch finished first. Either the run
+  record captures arrival order and timeout events and replay feeds
+  them back in the same order, or streaming consumers must be
+  order-insensitive. Recording fits "the record is the data".
+- **Coverage becomes completeness of accounting** (§6.10): when a
+  branch can fail or time out, an obligation can require every key to
+  appear in the output either as a result or as a declared failure,
+  so nothing is silently missing.
+- **Timing-dependent policies loosen a harness** (§6.9). Wait for all
+  with fail-closed failure is the most constrained form.
 
 ### 6.6 Bounding the nesting
 
@@ -340,6 +436,11 @@ Nesting is bounded by **types, labels and maximum tries**, not by shape:
   harnesses, not a deployable product, so there are no cost or token
   budgets: they would cripple the experiment without saying anything
   about constrainedness.
+- **Waits are bounded or declared.** Every wait on an external event
+  (a person, CI, an API) declares either a deadline or an explicit
+  block until the event arrives. A recorded block is not a hung
+  process, so the second is acceptable; the checker refuses an
+  undeclared indefinite wait.
 - **Weak checks stay visible** through endorsement labels.
 
 ### 6.7 Other Rules
@@ -409,9 +510,10 @@ have told apart, like a wide branch or a wide loop (§6.9). Fail-closed
 defaults do not: passing failure up to a recorded block is
 deterministic and conservative.
 
-**Open:** partial failure in `map`/`par`. One option is that one
-failure fails the lot by default, with an explicit opt-in to accept a
-collection of result-or-failure.
+**Partial failure in `map`/`par`** follows the recombining
+combinator's declared failure policy: fail-closed by default, with an
+explicit opt-in to accept a collection of results and failures
+(§6.5).
 
 ### 6.9 Constrainedness assessment
 
@@ -422,7 +524,7 @@ the dimensions:
 
 | Dimension | What loosens it |
 |---|---|
-| **Control** | wide model-chosen branches (many variants from LLM output); catch-all routing arms; high maximum tries |
+| **Control** | wide model-chosen branches (many variants from LLM output); catch-all routing arms; high maximum tries; timing-dependent recombination (streaming, first-of, k of n, deadlines) |
 | **Data** | free-text fields feeding effects or transitions, rather than enums or opaque handles; label relaxations; weak (model-as-judge) endorsements |
 | **Effects** | broad capabilities; non-idempotent effects; number of egress points |
 | **Failure** | catch-alls into active continuations; atoms exposed to undeclared failure; author-declared variants left on the default route where the right response is likely context-dependent |
@@ -437,6 +539,9 @@ the dimensions:
   same framework. This profile is the axis, and "how does
   performance change as constrainedness changes?" becomes an
   experiment the framework can run.
+- **Obligations count too.** The profile should list which declared
+  obligations are enforced by a deterministic coverage check (§6.10)
+  and which rest only on weak, model-judged checks.
 - **Open:** whether failure handling belongs in this one assessment,
   as the table assumes, or needs an assessment of its own. The
   current view is one assessment, because catch-alls loosen a
@@ -446,6 +551,44 @@ the dimensions:
   quantitative information flow (for example Smith's min-entropy
   leakage), which measures how much a channel lets through rather
   than asking yes or no.
+
+### 6.10 Enumerable obligations
+
+Owning the control flow guarantees that a step **runs**. It does not
+guarantee that the step's output **fulfils** an obligation: an LLM
+step can run and still leave things out. For obligations whose
+subject code can list, three things together close that gap:
+
+1. **A deterministic step produces the facts the obligation is
+   about**, so the set that must be covered is known exactly.
+2. **Those facts carry handles and are labelled observed** (§5), so a
+   model can neither invent members of the set nor drop them from it.
+3. **A deterministic coverage check runs inside the guard** (§6.4):
+   every key in the set must appear in the output, or, where items can
+   fail, appear as a declared failure (completeness of accounting,
+   §6.5). A miss loops back with a structured reason; running out of
+   tries gives "not possible".
+
+Either the output fulfils the obligation or the run says it could
+not. It can never silently omit an item. Examples:
+- every mechanical QA finding appears in the report (probe B1, task
+  2, note 0009);
+- every changed public function has a test (the diff lists the
+  functions);
+- every QA process in the user's list is addressed in a draft, if
+  each has a handle.
+
+Consequences:
+- **Obligations can be declared in the spec**, for example "L2's
+  output covers every key from N1", and the checker can confirm that
+  each declared obligation has a deterministic coverage check. That
+  makes some obligations assessable, not only prohibitions, and bears
+  directly on §1, problem 1.
+- **Limits.** It guarantees coverage, not quality: the check cannot
+  tell whether an item is treated well. It works only where code can
+  list the obligation's subject; "do a good review" stays weak.
+- **Cost.** If a model often fails the coverage check, runs end in
+  "not possible". B2 should measure how often.
 
 ## 7. Evaluation plan
 
