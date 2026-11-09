@@ -8,8 +8,6 @@ date: 2026-11-09
 
 *Status: exploratory design thinking, not a specification. Captured from a design discussion, November 2026.*
 
-*Version 2. Supersedes v1. Main change: the single recursive "prepare → call → check" primitive (v1 §6) is replaced by **typed atoms plus combinators**, with LLM calls enclosed by a `guard` combinator that the type system enforces. v1 (imported from myelin on 2026-11-06) stays in git history. Section 6 answers the open questions of discovery note 0007; §6.8 and §6.9 add failure handling and a constrainedness assessment, worked through on 2026-11-09.*
-
 ## 1. Problem
 
 Current coding-agent harnesses (Claude Code, Codex and similar) use an
@@ -436,8 +434,9 @@ the dimensions:
 - **It makes §2's continuum measurable.** An open loop can be built
   explicitly from LLM and tool nodes (§3), so open-loop and
   constrained-by-construction agents sit on one continuum within the
-  same framework, and this profile is the axis, and "how does performance change as constrainedness
-  changes?" becomes an experiment the framework can run.
+  same framework. This profile is the axis, and "how does
+  performance change as constrainedness changes?" becomes an
+  experiment the framework can run.
 - **Open:** whether failure handling belongs in this one assessment,
   as the table assumes, or needs an assessment of its own. The
   current view is one assessment, because catch-alls loosen a
@@ -450,4 +449,126 @@ the dimensions:
 
 ## 7. Evaluation plan
 
-Required
+### 7.1 Purpose: stopping tests, framework first
+
+The first job of evaluation is to find **reasons to stop**, cheaply,
+before most of the building. It evaluates the **framework first**: if
+eshr is a good instrument for running experiments on constrainable
+harnesses, it can then be used to run them.
+
+The claims the note eventually needs to test:
+
+| Claim | Source |
+|---|---|
+| **H1** A harness that owns the control flow is more assessable | §1, §4 |
+| **H2** It may perform better, because each call gets context assembled for it | §1 |
+| **H3** A CCA can perform comparably to an OLA | §2, question 1 |
+| **H4** OLA and CCA sit on a continuum, and performance varies measurably with constrainedness | §2, question 2; §6.9 |
+
+**H2 is deferred.** An eshr harness assembles context well only if
+someone has built a good context assembler to fill the `prep` slot.
+Until then, runs measure the *floor* of performance, not its
+potential.
+
+**Method.** Most blockers can be probed without building eshr at all,
+by paper exercises or a hand-wired prototype (plain code, no spec
+language, runtime or checker). If the premise fails there, the
+framework would not have rescued it. Each **stopping criterion is
+written down before the test is run**, so a result cannot be
+explained away afterwards.
+
+### 7.2 Hard blockers
+
+**B1. Are labels workable?** A paper exercise, no code. Take two or
+three real task classes, draw their graphs, label them honestly, and
+count per task: declassifications, endorsements, weak endorsements,
+human approvals, and nodes whose label ends up at the join of
+everything.
+- *Stop if* most LLM outputs end up maximally tainted even with
+  field-level labels and opaque handles, or the human approvals per
+  task make it unusable.
+- Also walk some prompt-injection cases through the graphs on paper.
+  Argument-level injection ("locks the verb, not the object") is the
+  other likely assurance blocker.
+
+**B2. Do models collapse under CCA conditions?** A hand-wired
+prototype. Models are trained in open loops, and eshr changes several
+things about how they are used, each of which could hurt performance
+on its own. Isolate them where possible:
+- tool *suggestion* through an output schema (a sum type), against
+  native tool calling;
+- no transcript: a single call over assembled context, with a
+  deliberately naive `prep`;
+- narrow retry feedback: an enum `Retry<Reason>`, against raw text.
+
+Run a small task set as a hand-wired graph and as the same model in a
+native tool loop.
+- *Stop if* success drops sharply on tasks with cheap checks, which
+  is where constrained designs should do well.
+
+**B3. How far up the ladder can useful work go?** Because explicit
+loops are allowed (§3), every task can be expressed at the open-loop
+end, so decomposition is never strictly impossible. The risk is that
+**every useful task only works near the bottom of the ladder**, in
+which case eshr adds a framework without adding constraint. For B2's
+tasks, record how far each can be narrowed before performance
+collapses.
+- *Stop if* realistic tasks all need near-open loops.
+
+**B4. Does something already do this, and is it available?** A short
+survey, not an experiment: CaMeL implementations, DSPy, BAML,
+LangGraph, Temporal-based agent frameworks and similar.
+- **Available** means usable without a procurement process: an open
+  or freely usable licence, runnable in our own environment. A tool
+  that needs government procurement to access counts for much less.
+- *Stop or change course if* an available tool gives most of the
+  value. That might mean building on it rather than stopping.
+
+**Open:** which task classes to use for B1–B3. The choice matters
+more than anything else here: they should span the cases where the
+note predicts constrained harnesses win (repetitive work, cheap
+per-step checks, adversarial inputs) and where they should struggle
+(data-dependent exploration). myelin's drafter → reviewer → reviser
+loop is a candidate, with a corpus of real runs to compare against.
+
+### 7.3 Cost of building something worth using
+
+**Worth using** means the smallest instrument that can run the ladder
+experiment (§7.4) on one real task class.
+
+| Component | Likely category |
+|---|---|
+| Running model calls | off the shelf |
+| Durable execution and state | off the shelf (e.g. Temporal), or thin (plain code first) |
+| Spec format | thin (a schema-checked data format first) |
+| Run record and replay | thin to moderate |
+| Type, label and effect checker | **novel**, though existing information-flow and effect type systems may cover much of it |
+| Constrainedness profile | **novel**, but small once the checker exists |
+| Built-in atoms (`guard`, `egress`, `endorse`, …) | moderate |
+
+Durations are not estimated here. The estimating probe is the first
+build stage: define, check, run and record an echo chain, and time
+it. Then extrapolate to the ladder instrument from known units of
+effort.
+
+### 7.4 Later, if nothing stops it
+
+- **The ladder experiment (H1, H3, H4).** For one task class, build a
+  ladder of harnesses inside eshr, from an explicit open loop (the
+  LLM may suggest any tool, high maximum tries) through
+  progressively narrower graphs to a tightly constrained one. Same
+  model, tools, tasks and runtime on every rung; only constrainedness
+  varies, measured by the §6.9 profile. This avoids the confounds of
+  comparing against an external harness. Comparison with an
+  external agent such as Claude Code comes last, as a sanity check.
+- **Measures.** Performance from the run record (task success, model
+  calls, tries used, escapes, human blocks). Assessability at three
+  levels: which policies the checker can prove on each rung; attack
+  success on a prompt-injection suite (AgentDojo, used by CaMeL,
+  scores both security and utility; from memory, to verify); and,
+  most convincingly, human assessors given a spec and checker report
+  against an open-loop configuration.
+- **Replay as everyday evaluation.** Re-running recorded inputs
+  through a revised harness and comparing check results judges each
+  revision without external comparison.
+- **H2** once a context assembler worth testing exists for `prep`.
