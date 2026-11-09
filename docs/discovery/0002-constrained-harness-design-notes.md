@@ -82,21 +82,27 @@ A **hybrid graph** is a harness whose top-level structure is a state machine wri
   contract (schema).
 - **Edges**: transitions owned by code, enabled by nodes' I/O signatures
 
-**There are no agentic (open-loop) nodes.** An earlier draft allowed
-nodes that call an open-loop agent internally. They are ruled out:
-work that seems to need one is decomposed into chains or loops of LLM
-and deterministic nodes (§6).
+**There are no agentic (pre-built open-loop) nodes.** An earlier draft
+allowed nodes that call an open-loop agent internally. They are ruled
+out. This does **not** rule out open loops: one is trivially built as
+a `loop` around an LLM node that suggests tools, with a `branch` to
+the tool nodes and back. What the ban removes is the **black box**: a
+pre-built open-loop harness whose tool calls, termination and context
+happen out of sight and would need complex special handling. An open
+loop built from LLM and tool nodes is in the graph, so it is typed,
+bounded by a maximum number of tries, recorded at every transition,
+and visible to the checker, which reports it as loose (§6.9).
 
-Guarantees hold **at node boundaries**. Because no node contains an
-open loop, there is no open-loop regime anywhere in the graph: inside
-an LLM node there is a single model call with no tool access. The
-design skill is cutting the graph so everything that must be
-guaranteed sits on a boundary or in a deterministic node.
+Guarantees hold **at node boundaries**. Inside an LLM node there is a
+single model call with no tool access; every tool use is a transition
+in the graph. The design skill is cutting the graph so everything
+that must be guaranteed sits on a boundary or in a deterministic node.
 
 Both extremes exist: a pure workflow (Agentless is close to this) is
 all deterministic or single-call nodes; Claude Code out of the box is
 a single open loop that owns everything, including termination. eshr
-deliberately cannot express the second.
+can express the second only as an explicit loop in the graph, never
+as a black box.
 
 Production precedent: Stripe's "Minions" use **blueprints** that
 interleave deterministic nodes (lint, CI, push) with agentic loops,
@@ -236,8 +242,10 @@ read-only tools. That is ruled out. Even read-only tools give the model
 direct access, bring untrusted or sensitive content into its context,
 and can leak data (a read-only fetch can carry data in its URL). The
 central call is always a single LLM message call. Work that seems to
-need an open loop is decomposed into chains and loops of LLM and
-deterministic atoms.
+need an open loop is built from chains and loops of LLM and
+deterministic atoms. That can recreate an open loop, but an explicit
+one: in the graph, bounded, recorded and assessed, rather than a
+black-box harness needing special handling (§3, §6.9).
 
 ### 6.1 Principle
 
@@ -425,9 +433,10 @@ the dimensions:
   invites gaming. Report it per node, list the hot spots, and show it
   as a **diff between spec versions**, so a reviewer sees what a
   change widened.
-- **It makes §2's continuum measurable.** If open-loop and
-  constrained-by-construction agents sit on a continuum, this profile
-  is the axis, and "how does performance change as constrainedness
+- **It makes §2's continuum measurable.** An open loop can be built
+  explicitly from LLM and tool nodes (§3), so open-loop and
+  constrained-by-construction agents sit on one continuum within the
+  same framework, and this profile is the axis, and "how does performance change as constrainedness
   changes?" becomes an experiment the framework can run.
 - **Open:** whether failure handling belongs in this one assessment,
   as the table assumes, or needs an assessment of its own. The
