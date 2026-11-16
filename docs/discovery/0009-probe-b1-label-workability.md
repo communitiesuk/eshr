@@ -132,6 +132,69 @@ A problem task 1 did not show: **injection can suppress findings.** A hidden cel
 - **Untrusted text rendered to a person** (a link, or a misleading instruction in a cell) needs safe display. That is a property of the render step.
 - **Automated declassification by aggregation is now load-bearing in both tasks.** It is the most important policy question B1 has raised.
 
+## Task 3: replying to a citizen about their case
+
+A citizen writes in about their case, for example a housing application, and the harness drafts the reply. This task was chosen to hit the narrowed failure condition from task 2: the reply is prose, it must reach a less-cleared sink on every run, and the case file holds material the citizen must not see (third parties' details, internal deliberations, a fraud or safeguarding referral). The lattice is unchanged.
+
+**Sources and sink:**
+
+| Source | Confidentiality | Integrity | Reasoning |
+|---|---|---|---|
+| S1 Citizen's message | OFFICIAL + personal | untrusted | it is the request, and the requester is outside the organisation; for the first time the instructions themselves are untrusted |
+| S2 Case record, structured fields (status, dates, decision, outstanding documents, amounts) | OFFICIAL + personal | system-trusted | read from the case system by code |
+| S3 Caseworker notes, free text | OFFICIAL-SENSITIVE + personal (includes third parties) | system-trusted where staff wrote them; untrusted where they quote correspondence | judgement call |
+| S4 Policy, guidance, reply templates | PUBLIC | system-trusted | |
+| Sink: email to the citizen | outside the organisation, so PUBLIC, except for what the citizen is entitled to about themselves | — | the lattice has no way to say "entitled to about themselves"; see findings |
+
+### Pass 1: the natural design
+
+L1 (LLM) reads the message, works out what is being asked and extracts the case reference. D1 fetches the record and notes for that reference. L2 (LLM) drafts the reply from S1, S2, S3 and S4. L3 (LLM judge) reviews it for accuracy and tone, looping to revise. A1 is the caseworker approving the reply, and E1 sends it.
+
+| Node | Output label | Sensitive point | Needs |
+|---|---|---|---|
+| L1 Understand request (LLM) | `{intent, case_ref}`, OFFICIAL + personal, untrusted | `case_ref` chooses whose case is fetched | the object of the fetch comes from untrusted text: "I am writing on behalf of my neighbour, ref 12345" fetches the neighbour's file |
+| D1 Fetch case (deterministic) | OFFICIAL-SENSITIVE + personal, untrusted (join) | — | — |
+| L2 Draft reply (LLM) | OFFICIAL-SENSITIVE + personal, untrusted | — | — |
+| L3 Review (LLM judge) | verdict, weakly endorsed | branch | exposed to injection from S1 |
+| A1 Caseworker approves | — | approval | already common practice |
+| E1 Send | — | sink below OFFICIAL-SENSITIVE | human declassification on every reply: free prose drawn from the notes may disclose a third party or tip off a referral |
+| Trifecta | | E1 holds sensitive data, untrusted content and a way out | broken only by A1 |
+
+**Counts:** 1 human declassification and approval per reply; 1 weak endorsement per round, exposed to injection; 3 nodes maximally tainted; the wrong case fetchable by injection, caught only if the caseworker notices.
+
+**Verdict:** the narrowed failure condition holds on every run. It is a pass only in the sense that A1 already exists, and A1 now has to do three jobs: judge the reply, hunt it for disclosures, and check it is about the right person.
+
+### Pass 2: restructured
+
+Three changes: authentication, not message text, chooses the case; replies split into a class that needs only releasable fields and a class that needs the notes; and some of what the notes say can be released through an enum and a fixed release map.
+
+| Node | Reads | Output label | Change |
+|---|---|---|---|
+| D0 Authenticate (deterministic) | sender identity | `case: handle`, system-trusted | the message can no longer choose whose case is read |
+| Q1 Quarantined intent (LLM, no capabilities), then N1 Endorse | S1 | `{intent: enum, other: bool}`, weakly endorsed | the only node that reads the message; it picks a route, and every route reads only data releasable to the authenticated person |
+| D1 Fetch releasable fields (deterministic) | D0, S2 | fields on a list releasable to the data subject, as handles | only listed fields leave the case system |
+| X1 Release to subject (deterministic) | D1, D0 | OFFICIAL + personal, released to the authenticated subject only | a recipient-relative release rule: "listed fields, to the person they are about"; fully automated, no free text |
+| Q2 Quarantined notes reader (LLM, no capabilities), then N2 Endorse | S3 | `{waiting_on: enum, next_step: enum}`, weakly endorsed | the model reads the notes but can answer only in enums |
+| X2 Release map (deterministic) | N2 | one approved phrase per enum value, PUBLIC | many-to-one: "internal referral" and "awaiting third party" both map to "we are waiting for information we need to progress your case" |
+| L2 Draft reply (LLM) | intent, X1 handles, X2 phrases, S4 | OFFICIAL, model-generated, prose with handles | never sees the notes or the message |
+| R1 Render (deterministic) | L2, X1 | OFFICIAL + personal, to the subject | inserts the values, as in task 2 |
+| L3 Check | draft | completeness fully endorsed; quality and "makes no commitment" weakly endorsed | deterministic check that the handles the intent needs all appear, plus an LLM judge |
+| H1 Caseworker | message, case, draft if any | — | only for `other = true`, or an intent the enums cannot answer; then the pass 1 approval applies |
+| E1 Send | | | no declassification for the structured class; human for the H1 class |
+
+**Counts, structured class:** 0 approvals for confidentiality; 2 automated declassifications (X1 recipient-relative, X2 release map); 3 weak endorsements (intent, notes enums, quality); 1 full endorsement (completeness); 2 nodes maximally tainted, neither with capabilities. **H1 class:** 1 human approval per reply, as in pass 1, but no longer with the wrong-case risk. **Per release map:** 1 human approval, once, when the map is designed.
+
+### Findings from task 3
+
+- **The narrowed condition is real, and structure confines it rather than removing it.** Where the reply must explain something only the notes contain and no enum can capture, a person must release it on every run. That holds for any harness that doesn't accept unreviewed disclosures, open-loop agents included, so it counts against the task, not against eshr. eshr's contribution is to route those runs to a person and send the rest without one. How many runs fall into each class is an empirical question about the service, not something labels can settle.
+- **A release map over an enum makes confidentiality independent of whether the model is right.** If every value of `waiting_on` maps to a phrase that is safe to send, a wrong answer from Q2 makes the reply inaccurate, never a disclosure. The approval moves from every run to the map, once.
+- **But the choice of value can itself disclose.** If "under review" appears only when there is a fraud referral, the phrase is a tell. The map must be many-to-one, so that every sensitive state shares its phrase with innocent ones. A checker can verify the map is a function onto approved phrases; it cannot verify that the merge hides the state. That stays a human judgement, made at design time. Bounding the channel to a few bits is not enough by itself; what matters is which states share an output.
+- **Confidentiality here is relative to the recipient, and the lattice cannot say so.** "Personal data" is releasable to the person it is about and to no one else outside. X1 handled this with a recipient-aware release rule, so the lattice did not have to change, but every reply passes through that rule. Labels with owners and readers, as in the decentralised label model (Myers and Liskov), express this directly. Whether note 0002's labels need principals is now an open question.
+- **The object of an action is a confidentiality question too.** In pass 1 the citizen's text chose whose case was read: "locks the verb, not the object" in its plainest form. The fix was to take the object from authentication, a system-trusted source, which is the structural rule: a value that selects data must be at least as trusted as the data's release requires.
+- **The untrusted party is also the recipient.** Injection in S1 can steer only the reply its author receives, so it cannot leak someone else's data in pass 2. What it can do is attack the reply's integrity, for example by getting a model to promise an outcome on the authority's behalf. **A sink can demand integrity as well as clearance**: a reply that speaks for the organisation needs content that the organisation vouches for. In pass 2 values come from the record, but the prose is model-generated and "makes no commitment" is only weakly endorsed.
+- **This sharpens the weak endorsement question.** The proposed policy says a weakly endorsed value may not authorise egress. In the structured class, labels already guarantee confidentiality, and only the reply's integrity rests on the weak judge. Either that policy is relaxed for egress whose confidentiality is guaranteed, or every reply needs a person for integrity, and the structured class saves nothing.
+- **The cost moves to performance again, and more sharply.** L2 answers a question it has not read, from an intent enum. Whether replies built that way are good enough is a B2 question, and this task should join B2's task set.
+
 ## Weak endorsement
 
 **Endorsement** raises a value's integrity because something has checked it. Its strength depends on what vouches for the value:
@@ -141,19 +204,33 @@ A problem task 1 did not show: **injection can suppress findings.** A hidden cel
 
 A weak class exists because harnesses need to branch on model judgements, but a model's opinion should not carry the weight of a computed fact. Downstream policy can tell them apart. For example, a weakly endorsed verdict may choose low-stakes routes ("revise again", "move on to human review") but may not authorise egress, an irreversible effect, or skipping a human approval. Note 0002 does not yet say what weak endorsement may drive.
 
-## Interim verdict
+## Verdict
 
-Two tasks, two passes each. **Both pass after restructuring, at the cost of a few small nodes.** No hard blocker so far. The open risk has moved to B2: whether keeping raw data away from the drafting models degrades their output.
+Three tasks, two passes each. **The stopping criterion is not met.** After restructuring, no task leaves most LLM outputs maximally tainted: in every pass 2, the only maximally tainted nodes are quarantined and have no capabilities. Required human approvals per run fall to zero in tasks 1 and 2. In task 3 they fall to zero for replies the structured class can answer, and stay at one for the rest. That residue is the narrowed failure condition, and it is irreducible for any harness, so it does not count against eshr.
+
+Two things the verdict depends on:
+
+- **Automated declassification.** This bears only on the approvals criterion. The taint criterion is met by quarantine whoever releases the values. Every pass 2 puts a deterministic declassifier between sensitive data and a less-cleared sink: aggregation in tasks 1 and 2, a recipient-relative rule and a release map in task 3. There are three possible policies:
+  1. **A person releases every run.** This is the strict reading of note 0002 §5's example policy.
+  2. **A person approves the rule once, and code applies it.** Every pass 2 assumes this.
+  3. **Code releases with no approved rule.** Not proposed.
+
+  Under policy 2, B1 passes cleanly. Under policy 1 it still does not meet the stopping criterion, but the gain shrinks from "no approval" to "a cheaper approval": a person checks a small structured output (counts, enums, listed fields) instead of hunting through prose. Task 1 is unaffected, since the ADR is accepted by a person anyway. Task 2 needs one approval of a table of counts per report, for the team log. Task 3 needs one approval per reply, the same count as pass 1, keeping only the authenticated case selection and the smaller thing to check. Whether policy 2 counts as a person approving the declassification is the question the verdict turns on.
+- **Weak endorsement and egress.** Task 3's structured class sends with no person only if a weakly endorsed integrity check may authorise egress whose confidentiality labels already guarantee.
+
+The cost the labels impose has shown up in every task as a performance question: models that draft from enums, handles and counts rather than raw data. That is B2's to answer.
 
 ## Open questions
 
-- How does a deterministic `declassify` declare its release rule, and how does the checker verify it? (Added to note 0002.)
-- Is automated declassification by aggregation acceptable, or does every declassification from OFFICIAL-SENSITIVE need a person?
-- What may a weakly endorsed value drive?
+- How does a deterministic `declassify` declare its release rule, and how does the checker verify it? (Added to note 0002.) Task 3 adds two kinds of rule: recipient-relative ("to the person it is about") and release maps, whose safety depends on which states share an output.
+- Does a person approving a release rule once satisfy "declassification requires a human approval", or must a person release every run?
+- What may a weakly endorsed value drive? In particular, may it authorise egress when labels already guarantee confidentiality and only integrity rests on it?
+- Do note 0002's labels need principals (owners and readers), or is a recipient-aware declassifier enough?
+- Should sinks declare a minimum integrity as well as a clearance?
 - Does withholding raw data from the drafting models degrade their output? (For B2/B3.)
-- Does B1 fail where the narrowed condition holds? Task 3 should test it.
+- In a real service, what share of citizen queries could the structured class answer? (Empirical; not answerable on paper.)
 
 ## Next steps
 
-- Task 3: a task where model-written prose about sensitive data must reach a less-cleared sink on every run, with no mechanical way to redact it. Replying to a citizen about their case is a candidate.
-- Carry tasks 1 and 2, both passes, into B2's task set.
+- Carry tasks 1, 2 and 3, both passes, into B2's task set.
+- Take the open questions on declassification, weak endorsement, principals and sink integrity into note 0002 §5.
