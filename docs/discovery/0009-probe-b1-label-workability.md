@@ -210,7 +210,12 @@ Three tasks, two passes each. **The stopping criterion is not met.** After restr
 
 Two things the verdict depends on:
 
-- **Automated declassification.** Every pass 2 relies on deterministic declassifiers: aggregation in tasks 1 and 2, a recipient-relative rule and a release map in task 3. If policy demands a person for every declassification from OFFICIAL-SENSITIVE, task 2's team log and task 3's structured class need a human on every run, and the verdict for those tasks becomes "usable only where a person already reviews each output".
+- **Automated declassification.** This bears only on the approvals criterion. The taint criterion is met by quarantine whoever releases the values. Every pass 2 puts a deterministic declassifier between sensitive data and a less-cleared sink: aggregation in tasks 1 and 2, a recipient-relative rule and a release map in task 3. There are three possible policies:
+  1. **A person releases every run.** This is the strict reading of note 0002 §5's example policy.
+  2. **A person approves the rule once, and code applies it.** Every pass 2 assumes this.
+  3. **Code releases with no approved rule.** Not proposed.
+
+  Under policy 2, B1 passes cleanly. Under policy 1 it still does not meet the stopping criterion, but the gain shrinks from "no approval" to "a cheaper approval": a person checks a small structured output (counts, enums, listed fields) instead of hunting through prose. Task 1 is unaffected, since the ADR is accepted by a person anyway. Task 2 needs one approval of a table of counts per report, for the team log. Task 3 needs one approval per reply, the same count as pass 1, keeping only the authenticated case selection and the smaller thing to check. Whether policy 2 counts as a person approving the declassification is the question the verdict turns on.
 - **Weak endorsement and egress.** Task 3's structured class sends with no person only if a weakly endorsed integrity check may authorise egress whose confidentiality labels already guarantee.
 
 The cost the labels impose has shown up in every task as a performance question: models that draft from enums, handles and counts rather than raw data. That is B2's to answer.
@@ -218,7 +223,7 @@ The cost the labels impose has shown up in every task as a performance question:
 ## Open questions
 
 - How does a deterministic `declassify` declare its release rule, and how does the checker verify it? (Added to note 0002.) Task 3 adds two kinds of rule: recipient-relative ("to the person it is about") and release maps, whose safety depends on which states share an output.
-- Is automated declassification acceptable, or does every declassification from OFFICIAL-SENSITIVE need a person?
+- Does a person approving a release rule once satisfy "declassification requires a human approval", or must a person release every run?
 - What may a weakly endorsed value drive? In particular, may it authorise egress when labels already guarantee confidentiality and only integrity rests on it?
 - Do note 0002's labels need principals (owners and readers), or is a recipient-aware declassifier enough?
 - Should sinks declare a minimum integrity as well as a clearance?
